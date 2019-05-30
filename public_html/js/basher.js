@@ -1841,6 +1841,7 @@
            $(".started_stories table").html("<tr><th>Story</th><th>Rating</th><th class=\"date\">Completed</th></tr>");
        }
 
+       var story_started = false;
 
        stories.forEach((the_story, index) => {
 
@@ -1886,8 +1887,10 @@
 
            // if the first word was written by this user, flip it to started stories (not in both)
 
-           if (which_type === "your" && the_story.contributors[0] == global_user.uid)
+           if (which_type === "your" && the_story.contributors[0] == global_user.uid) {
                which_type = "started";
+               story_started = true;
+           }
 
            $("." + which_type + "_stories table").append("<tr class=\"" + the_story.id + "\"><td class=\"title\" onclick=\"get_story('" + the_story.id + "')\">" + title + "</td><td class=\"rating\">" + star(the_story.rating.score, user_rating) + "</td><td class=\"date\">" + the_date + "</td></tr>");
 
@@ -1900,6 +1903,9 @@
                which_type = "your";
 
        });
+
+       if (story_started)
+           $(".started_stories").show();
 
    }
 
