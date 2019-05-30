@@ -1,0 +1,75 @@
+{
+    "indexes": [{
+            "collectionGroup": "Stories",
+            "queryScope": "COLLECTION",
+            "fields": [{
+                    "fieldPath": "contributors",
+                    "arrayConfig": "CONTAINS"
+                },
+                {
+                    "fieldPath": "rating",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+
+
+        {
+            "collectionGroup": "Stories",
+            "queryScope": "COLLECTION",
+            "fields": [{
+                    "fieldPath": "favorites",
+                    "arrayConfig": "CONTAINS"
+                },
+                {
+                    "fieldPath": "date_finished",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+
+
+
+
+        {
+            "collectionGroup": "Stories",
+            "queryScope": "COLLECTION",
+            "fields": [{
+                    "fieldPath": "pending_title",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "rating.votes",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "Stories",
+            "queryScope": "COLLECTION",
+            "fields": [{
+                    "fieldPath": "title",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "date_finished",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "Stories",
+            "queryScope": "COLLECTION",
+            "fields": [{
+                    "fieldPath": "date_finished",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "in_queue",
+                    "order": "ASCENDING"
+                }
+            ]
+        }
+    ],
+    "fieldOverrides": []
+}

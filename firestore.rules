@@ -1,0 +1,99 @@
+service cloud.firestore {
+    match /databases/{database}/documents {
+
+
+    match /Stories/{storyId} {
+
+        allow list: if request.query.limit < 26;
+        allow read: if true;
+
+    }
+
+      match /Private/{userId} {
+   allow read: if request.auth.uid == userId;
+      }
+
+    match /Users/{userId} {
+
+        function validateUserWrite(new_user_data, old_user_data) {
+
+            return (new_user_data.score == old_user_data.score &&
+                new_user_data.last_login == old_user_data.last_login &&
+                 new_user_data.recent_words == old_user_data.recent_words &&
+                (!("displayName" in new_user_data) || (new_user_data.displayName.size() < 16 && new_user_data.displayName.size() > 1)) &&
+                (!("email" in new_user_data) || new_user_data.email.matches('^.+@.+$') == true)
+            );
+
+        }
+
+        allow read: if true;
+        allow list: if false;
+        allow update: if request.auth.uid == userId &&
+            validateUserWrite(request.resource.data, resource.data);
+
+    }
+
+    match /Users/{userId}/Stories/{document = **} {
+
+        function validateEntries(the_data) {
+
+            return (
+
+                (!("end_vote" in the_data.keys()) ||
+                    the_data.end_vote is bool)
+
+                &&
+                (!("no_vote" in the_data.keys()) ||
+                    the_data.no_vote is bool)
+
+                &&
+                (!("title_vote" in the_data.keys()) ||
+                    the_data.title_vote is number)
+
+
+                &&
+                (!("rating" in the_data.keys()) ||
+                    (the_data.rating is number &&
+                        !(the_data.rating < 1) &&
+                        !(the_data.rating > 5))
+                )
+
+                &&
+                (!("new_word" in the_data.keys()) ||
+                    (the_data.new_word is string &&
+                        !(the_data.new_word.size() < 1) &&
+                        !(the_data.new_word.size() > 30) &&
+                          the_data.new_word.matches('^([-\'0-9a-zÀ-ÿ]|[Þß÷þø])+$')
+                        )
+                )
+
+                                &&
+                (!("punctuation" in the_data.keys()) ||
+                    (the_data.punctuation is string &&
+                       (the_data.punctuation == ""  ||
+                        the_data.punctuation == "." ||
+                        the_data.punctuation == "," ||
+                        the_data.punctuation == "!" ||
+                        the_data.punctuation == "?"
+                        ))
+                )
+
+                &&
+                (!("submit_title" in the_data.keys()) ||
+                    (the_data.the_title is string &&
+                        !(the_data.the_title.size() < 1) &&
+                        !(the_data.the_title.size() > 45))
+
+                )
+
+            );
+
+        }
+        allow read, list: if request.auth.uid == userId;
+        allow write: if request.auth.uid == userId &&
+            validateEntries(request.resource.data);
+
+    }
+
+}
+}
