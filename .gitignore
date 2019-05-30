@@ -77,3 +77,8 @@ typings/
 
 # Custom
 no_upload/
+.firebase/
+.gitignore
+.gitattributes
+.firebasesrc
+.eslintrc.json
