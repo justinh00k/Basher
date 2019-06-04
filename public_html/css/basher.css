@@ -115,7 +115,7 @@ user-photo.self {
 #h1 {
     display: block;
     position: relative;
-    margin: 0 0 4rem;
+    margin: 1rem 0 3rem;
     z-index: 1;
 }
 
@@ -354,6 +354,8 @@ change-name,
 change-email,
 .error-code,
 .start,
+#warning,
+suggest-title,
 mobile-footer {
     display: none
 }
@@ -585,6 +587,10 @@ suggest-title li {
     font-size: 3.5rem
 }
 
+suggest-title li {
+    padding: .5rem 0;
+}
+
 main h2:first-of-type {
     padding-top: 2rem
 }
@@ -712,22 +718,21 @@ rating-wrapper {
 }
 
 suggest-title input[type="text"] {
-    width: 45rem
+    width: calc(100% - 5rem);
 }
 
 suggest-title .vote {
-    float: right;
-    margin-right: 2rem
+    position: relative;
+    margin-bottom: 2rem;
 }
 
 suggest-title ul {
-    display: none;
     margin-bottom: 4rem
 }
 
 table {
     border-collapse: collapse;
-    max-width: 58rem;
+    max-width: 60rem;
     margin-bottom: 4rem;
     width: 100%
 }
@@ -742,6 +747,7 @@ table .rating {
 }
 
 table .title {
+    text-transform: capitalize;
     min-width: 14rem
 }
 
@@ -785,10 +791,14 @@ the-story-wrapper {
     padding: 2.5rem 2rem 3rem
 }
 
+suggest-title {
+    margin-top: -4rem;
+}
+
 the-title,
 suggest-title ul,
 suggest-title input {
-    font-size: 5rem;
+    font-size: 3.5rem;
     font-weight: 700;
     text-transform: capitalize
 }
@@ -879,7 +889,7 @@ pending-word {
     }
     main .story,
     main .queue {
-        margin: 0 5%;
+        margin: 0 5% 4rem;
         width: 90%
     }
     mobile-footer {

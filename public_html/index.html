@@ -150,10 +150,7 @@
                 </p>
 
                 <h2 id="announcements">Announcements</h2>
-                <ul>
-                    <li><b>Basher Alpha is live!</b> Thank you for helping to test the site and being among the first to create stories with Basher. Please report any bugs or leave other comments at <a href="mailto:mail@basher.app">mail@basher.app</a>.</li>
-                </ul>
-
+                <div id="announcements_div"></div>
             </div>
 
             <div class="not_logged_in">
@@ -203,10 +200,10 @@
 
             <h2>Thank you for using Basher.</h2>
 
-            <p>This website is an experiment, created by an individual. All helpful suggestions and error reports are welcome.</p>
+            <p>This website is an experiment, created by an <a href="https://justinhook.com" target="_blank">individual</a>. All helpful suggestions and error reports are welcome.</p>
             <p>Please consider everything submitted to the site to be the property of <b>Basher</b>. If we ever reproduce the stories, we or may not include your display name. Your email address will always remain completely private. We collect no other
                 personal info.</p>
-            <p>Feel free to get in touch at <a href="mailto:mail@basher.app">mail@basher.app</a>.</p>
+            <p>Get in touch at <a href="mailto:mail@basher.app">mail@basher.app</a>.</p>
 
         </section>
 
@@ -214,13 +211,20 @@
 
             <h2>Queue</h2>
 
-            <suggest-title>
 
-                <ul></ul>
-
-            </suggest-title>
 
             <the-story-wrapper>
+                <suggest-title>
+                    <ul></ul>
+                    <button class="vote" onclick="vote_on_title()">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 426.667 426.667">
+                                <path style="fill:#6AC259;" d="M213.333,0C95.518,0,0,95.514,0,213.333s95.518,213.333,213.333,213.333
+                                    c117.828,0,213.333-95.514,213.333-213.333S331.157,0,213.333,0z M174.199,322.918l-93.935-93.931l31.309-31.309l62.626,62.622
+                                    l140.894-140.898l31.309,31.309L174.199,322.918z"></path>
+                                </svg>
+                    </button>
+                </suggest-title>
+
                 <the-title></the-title>
                 <the-story></the-story>
                 <approval-wrapper>
@@ -319,15 +323,7 @@
 
             </rating-wrapper>
 
-            <suggest-title>
-                <button class="vote" onclick="vote_on_title()">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 426.667 426.667">
-                        <path style="fill:#6AC259;" d="M213.333,0C95.518,0,0,95.514,0,213.333s95.518,213.333,213.333,213.333
-                            c117.828,0,213.333-95.514,213.333-213.333S331.157,0,213.333,0z M174.199,322.918l-93.935-93.931l31.309-31.309l62.626,62.622
-                            l140.894-140.898l31.309,31.309L174.199,322.918z"></path>
-                        </svg>
-            </button>
-            </suggest-title>
+
 
         </section>
 
@@ -500,7 +496,6 @@
     <script src="/__/firebase/6.0.2/firebase-firestore.js"></script>
     <script src="/__/firebase/6.0.2/firebase-storage.js"></script>
     <script src="/__/firebase/6.0.2/firebase-performance.js"></script>
-    <!--  <script src="//cdn.firebase.com/libs/firebaseui/4.0.0/firebaseui.js"></script> -->
     <script src="/js/firebaseui.js"></script>
 
 
@@ -567,9 +562,7 @@
                 eventCategory: 'Perf Metrics',
                 eventAction: 'first-input-delay',
                 eventLabel: evt.type,
-                // Event values must be an integer.
                 eventValue: Math.round(delay),
-                // Exclude this event from bounce rate calculations.
                 nonInteraction: true,
             });
         });

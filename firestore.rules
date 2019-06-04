@@ -9,6 +9,11 @@ service cloud.firestore {
 
     }
 
+       match /Messages/global {
+   allow read: if request.auth != null;
+
+      }
+
       match /Private/{userId} {
    allow read: if request.auth.uid == userId;
       }
@@ -33,7 +38,9 @@ service cloud.firestore {
 
     }
 
-    match /Users/{userId}/Stories/{document = **} {
+    match /Users/{userId}/Stories/{storyId} {
+
+     
 
         function validateEntries(the_data) {
 
@@ -46,10 +53,21 @@ service cloud.firestore {
                 (!("no_vote" in the_data.keys()) ||
                     the_data.no_vote is bool)
 
+                       &&
+                (!("yes_vote" in the_data.keys()) ||
+                    the_data.yes_vote is bool)
+
                 &&
                 (!("title_vote" in the_data.keys()) ||
                     the_data.title_vote is number)
 
+ &&
+                (!("submit_title" in the_data.keys()) ||
+                    (
+                      the_data.submit_title is string &&
+                     !(the_data.submit_title.size() > 30)
+                    )
+                )
 
                 &&
                 (!("rating" in the_data.keys()) ||
@@ -63,10 +81,11 @@ service cloud.firestore {
                     (the_data.new_word is string &&
                         !(the_data.new_word.size() < 1) &&
                         !(the_data.new_word.size() > 30) &&
-                          the_data.new_word.matches('^([-\'0-9a-zÀ-ÿ]|[Þß÷þø])+$')
+                        ( 
+                            ( the_data.new_word == "[END]" && get(/databases/$(database)/documents/Stories/$(storyId)).data.story.size() >= 39 ) ||
+                             the_data.new_word.matches('^([-\'0-9a-zÀ-ÿ]|[Þß÷þø])+$')) 
                         )
                 )
-
                                 &&
                 (!("punctuation" in the_data.keys()) ||
                     (the_data.punctuation is string &&
@@ -78,15 +97,7 @@ service cloud.firestore {
                         ))
                 )
 
-                &&
-                (!("submit_title" in the_data.keys()) ||
-                    (the_data.the_title is string &&
-                        !(the_data.the_title.size() < 1) &&
-                        !(the_data.the_title.size() > 45))
-
-                )
-
-            );
+                        );
 
         }
         allow read, list: if request.auth.uid == userId;
