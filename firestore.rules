@@ -4,15 +4,25 @@ service cloud.firestore {
 
     match /Stories/{storyId} {
 
-        allow list: if request.query.limit < 26;
+        allow list: if request.query.limit <= 100;
         allow read: if true;
 
     }
 
-       match /Messages/global {
+       match /Messages {
+       
+       match /global {
    allow read: if request.auth != null;
-
+  
       }
+
+        match /{userId} {
+   allow read: if request.auth.uid == userId;
+  
+      }
+
+
+       }
 
       match /Private/{userId} {
    allow read: if request.auth.uid == userId;
@@ -23,6 +33,7 @@ service cloud.firestore {
         function validateUserWrite(new_user_data, old_user_data) {
 
             return (new_user_data.score == old_user_data.score &&
+                new_user_data.stories_created == old_user_data.stories_created &&
                 new_user_data.last_login == old_user_data.last_login &&
                  new_user_data.recent_words == old_user_data.recent_words &&
                 (!("displayName" in new_user_data) || (new_user_data.displayName.size() < 16 && new_user_data.displayName.size() > 1)) &&
@@ -32,7 +43,7 @@ service cloud.firestore {
         }
 
         allow read: if true;
-        allow list: if false;
+        allow list: if request.auth.uid == userId && request.query.limit <= 25;
         allow update: if request.auth.uid == userId &&
             validateUserWrite(request.resource.data, resource.data);
 
@@ -40,17 +51,17 @@ service cloud.firestore {
 
     match /Users/{userId}/Stories/{storyId} {
 
-     
+     function canStart(diff_data){
+
+return (diff_data.stories_created == 0 || (diff_data.score / diff_data.stories_created) > 50 )
+
+     }
 
         function validateEntries(the_data) {
 
             return (
 
-                (!("end_vote" in the_data.keys()) ||
-                    the_data.end_vote is bool)
-
-                &&
-                (!("no_vote" in the_data.keys()) ||
+                            (!("no_vote" in the_data.keys()) ||
                     the_data.no_vote is bool)
 
                        &&
@@ -59,7 +70,16 @@ service cloud.firestore {
 
                 &&
                 (!("title_vote" in the_data.keys()) ||
-                    the_data.title_vote is number)
+                   ( the_data.title_vote is number &&
+                    get(/databases/$(database)/documents/Stories/$(storyId)).data.date_finished > 0 
+                    
+                    && (the_data.title_vote > 1 ||( 
+the_data.title_vote == 1 &&
+"submit_title" in the_data.keys()
+
+                    ) )
+                    )
+                    )
 
  &&
                 (!("submit_title" in the_data.keys()) ||
@@ -73,20 +93,30 @@ service cloud.firestore {
                 (!("rating" in the_data.keys()) ||
                     (the_data.rating is number &&
                         !(the_data.rating < 1) &&
-                        !(the_data.rating > 5))
-                )
-
-                &&
-                (!("new_word" in the_data.keys()) ||
-                    (the_data.new_word is string &&
-                        !(the_data.new_word.size() < 1) &&
-                        !(the_data.new_word.size() > 30) &&
-                        ( 
-                            ( the_data.new_word == "[END]" && get(/databases/$(database)/documents/Stories/$(storyId)).data.story.size() >= 39 ) ||
-                             the_data.new_word.matches('^([-\'0-9a-zÀ-ÿ]|[Þß÷þø])+$')) 
+                        !(the_data.rating > 5) &&
+                        get(/databases/$(database)/documents/Stories/$(storyId)).data.date_finished > 0 )
                         )
                 )
-                                &&
+                
+                 &&
+                (!("new_word" in the_data.keys()) ||
+                    (
+                    the_data.new_word is string &&
+                        !(the_data.new_word.size() < 1) &&
+                        !(the_data.new_word.size() > 30) &&
+                         (
+                              the_data.new_word.matches('^([-\'0-9a-zÀ-ÿ]|[Þß÷þø])+$') || 
+                             (the_data.new_word == "[END]" && get(/databases/$(database)/documents/Stories/$(storyId)).data.story.size() >= 39)
+                          
+                         ) &&
+                         (storyId in get(/databases/$(database)/documents/Private/$(userId)).data.queued_stories ||
+                          ( exists(/databases/$(database)/documents/Stories/$(storyId)) == false &&
+                               canStart(get(/databases/$(database)/documents/Users/$(userId)).data)
+                          ) 
+                         )
+                )
+
+                 &&
                 (!("punctuation" in the_data.keys()) ||
                     (the_data.punctuation is string &&
                        (the_data.punctuation == ""  ||

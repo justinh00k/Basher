@@ -4,12 +4,17 @@
     --deny: #F05228;
     --empty-star: var(--shadow);
     --gold: #FFD700;
-    --main_accent: #b3b1bb;
-    /* green b6d7b9  grey bdb4bf / blue A5A4AE */
-    --main_background: #eff2ef;
-    /*blue #D0D8FA */
+    --main_accent: #a1a6b4;
+    /*launch silver: b3b1bb  green b6d7b9  grey bdb4bf / blue A5A4AE */
+    --main_background: #d6dff0;
+    /* darkish blue b4c5e4 */
+    /* dark gray aaabbc */
+    /* launch gray: eff2ef */
+    /* pinkish ffeddf */
+    /* blue #D0D8FA */
     /* #e9eefc E6E6FA */
     --nav_accent: #4392f1;
+    /* alt blue: #3d52d5 */
     /* hipster pinl: E1518F */
     /* rose  BB3A69   */
     /* blue: #4169E1 */
@@ -78,7 +83,7 @@ select::-ms-expand {
 
 select:focus,
 select:hover {
-    border-color: var(--black);
+    border-color: var(--white);
 }
 
 
@@ -110,6 +115,10 @@ select option {
 
 user-photo.self {
     cursor: pointer;
+}
+
+#welcomeh2 {
+    font-size: 5.5rem
 }
 
 #h1 {
@@ -191,8 +200,8 @@ loader-icon svg {
 
 .queue loader-icon svg {
     position: absolute;
-    bottom: -3rem;
-    left: 3rem;
+    bottom: -4.5rem;
+    left: 8.5rem
 }
 
 .flag {
@@ -252,7 +261,7 @@ contributors-wrapper li,
 
 .rankings {
     font-weight: 700;
-    margin: -4rem 0 4rem
+    margin: -2rem 0 4rem
 }
 
 .rankings span {
@@ -337,6 +346,10 @@ button.submit_change {
     font-size: 1rem;
     margin-top: 2.5rem;
     position: absolute
+}
+
+main section {
+    padding-bottom: 4rem;
 }
 
 [hidden],
@@ -558,13 +571,14 @@ main {
     padding: 0 3rem 3rem
 }
 
-main h2,
-loading {
+main h2 {
     color: var(--black);
     font-family: 'IBM Plex Sans', Arial, Helvetica, sans-serif;
-    font-size: 4rem;
+    font-size: 4.5rem;
     font-weight: 700;
     letter-spacing: 0;
+    text-shadow: 3px 3px 0 var(--shadow);
+    padding-top: 2rem
     /*
     text-shadow: 2px 2px 0 var(--black), -1px -1px 0 var(--black), 1px -1px 0 var(--black), -1px 1px 0 var(--black), 1px 1px 0 var(--black)
 */
@@ -581,18 +595,13 @@ change-email div {
 
 the-story,
 new-word,
-approval-wrapper,
-suggest-title li {
+approval-wrapper {
     color: var(--black);
     font-size: 3.5rem
 }
 
 suggest-title li {
     padding: .5rem 0;
-}
-
-main h2:first-of-type {
-    padding-top: 2rem
 }
 
 main #welcome h2 {
@@ -784,7 +793,7 @@ th {
 
 the-story-wrapper {
     background-color: var(--white);
-    border-radius: 1rem;
+    border-radius: 0;
     box-shadow: 3px 3px 3px var(--shadow);
     display: block;
     margin: 4rem 8rem 4rem 0;
@@ -797,8 +806,9 @@ suggest-title {
 
 the-title,
 suggest-title ul,
-suggest-title input {
-    font-size: 3.5rem;
+suggest-title input,
+suggest-title li {
+    font-size: 4.5rem;
     font-weight: 700;
     text-transform: capitalize
 }
@@ -829,16 +839,26 @@ ul {
     /* max-width: 58rem */
 }
 
+#recent_users,
 #announcements,
 #rules {
     margin-top: 4rem
+}
+
+#recent_users_div img {
+    display: inline-block;
+    margin: 0 1rem 0 0;
+    height: 5rem;
+    object-fit: cover;
+    width: 5rem;
+    cursor: pointer;
 }
 
 #welcome p,
 main h2,
 the-title,
 main section {
-    margin-bottom: 4rem
+    margin-bottom: 2rem
 }
 
 pending-word {
@@ -846,21 +866,50 @@ pending-word {
     width: auto
 }
 
+tr.more {
+    background-color: transparent;
+}
+
+.more td {
+    text-align: center;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 4rem;
+    line-height: 1rem;
+}
+
+#kurt {
+    border: 4px solid var(--nav_accent);
+    width: 100%;
+    object-fit: cover;
+    max-height: 20rem;
+    object-position: 0 70%;
+    border: solid var(--black) .5rem;
+}
+
 @media screen and (max-width:800px) {
     html {
         font-size: 8px
     }
-    main h2:first-of-type {
-        padding-top: 0
+    html,
+    body {
+        max-width: 100%;
+        overflow-x: hidden
+    }
+    #recent_users_div {
+        padding-left: 1rem
     }
     #h1 {
-        margin: 0rem 0 3rem
+        height: 20rem;
+        overflow: hidden;
+        margin-bottom: 0;
     }
     #h1 svg {
-        width: 15rem;
-        bottom: 0;
         left: 50%;
-        margin: 0 0 -17rem -7.5rem;
+        height: 18rem;
+        width: 20rem;
+        margin-left: -10rem;
+        margin-top: -1rem;
     }
     nav h1 {
         padding: 4rem 0 1.5rem;
@@ -868,8 +917,8 @@ pending-word {
     .settings {
         width: 100%
     }
-    .story the-story-wrapper {
-        margin: 2rem
+    the-story-wrapper {
+        margin: 4rem 0;
     }
     .user user-photo {
         display: block;
@@ -879,10 +928,6 @@ pending-word {
     main {
         margin: 0;
         padding: 0
-    }
-    main h2 {
-        font-size: 4rem;
-        letter-spacing: -.15rem
     }
     main .not_logged_in {
         margin: 0
@@ -905,9 +950,6 @@ pending-word {
     main p,
     main h2 {
         margin: 1rem
-    }
-    main section {
-        padding: 2rem 0
     }
     nav {
         padding: 1rem 0;
@@ -953,6 +995,9 @@ pending-word {
     footer {
         /* "Profile" icon */
         position: static;
+    }
+    .queue loader-icon {
+        position: relative;
     }
     .start,
     .about {

@@ -170,10 +170,11 @@ firebase.initializeApp({
 
 var perf = firebase.performance();
 
-var story_db = {};
-var queued_rates = [];
-var queued_titles = [];
-var queued_stories = [];
+let story_db = {};
+let global_tables = {};
+let queued_rates = [];
+let queued_titles = [];
+let queued_stories = [];
 
 const punc = [".", ",", "!", "?"];
 
@@ -181,23 +182,22 @@ const warning_message = { "title": "Warning", "message": "Several of your submis
 const max_demerit_percentage = 50;
 
 // Checks if user meant to submmit non dictionary word
-var are_you_sure = last_entry = "";
+let are_you_sure = last_entry = "";
 
 // TUrn off snapshots. make them blank just in case they get called at wrong time
-var stop_score = function() {};
-var stop_story = function() {};
-var stop_queue = function() {};
-var stop_announcements = function() {};
+let stop_score = function() {};
+let stop_story = function() {};
+let stop_queue = function() {};
+let stop_announcements = function() {};
+let stop_messages = function() {};
 
-// Not the correct sytem but
-var stories_started = 0;
-var stories_they_can_create = 1;
+let stories_per_page = 25
 
 // I should add in user_loaded
-var global_user = user_stories = addthis_share = queue_loaded = top_stories_loaded = recent_stories_loaded = loading = load_when_finshed = on_dead_queue = false;
+let global_user = user_stories = queue_loaded = top_stories_loaded = recent_stories_loaded = loading = load_when_finshed = on_dead_queue = warning_shown = flag_end_confirmation = user_has_messages = false;
 
 // Tracks queue - Tracks Which story in your personal queue you're on - Tracks when you get to start
-var counter = {
+let counter = {
     queue: 0, // where ou are in the queue
     story: 0, // within your personal story queue
     start: 0, // how many start_stories you've done
@@ -208,10 +208,10 @@ var counter = {
 const in_progress_string = '<span class="progress">in progress</span>';
 
 // For detecting errors with uploading new profile images.
-var new_profile_pic = new Image();
+let new_profile_pic = new Image();
 
 // Default photo url - we will load user's image once only
-var my_photo_url = "https://basher.app/images/user.png";
+let my_photo_url = "https://basher.app/images/user.png";
 
 // For flag to apppear
 const minimum_story_length = 39; // 49?
@@ -220,73 +220,42 @@ const minimum_story_length = 39; // 49?
 const number_of_recent_words = 10;
 
 // number of stories to get at a time for tables, etc.
-const limit_count = 25;
+const limit_count = 100;
+const recent_user_count = 24;
 
 // Queue
-const writes = 8; // 50 words - 50
-const rates = 1; // 10 ratings  - 10
-const titles = 1; // 10 title votes - 20
-const starts = 1; // 10 new stories - 1 - We need fewer starts
-const starts_multiplier = 5; // starts happen every starts / starts_multipler
+const writes = 8; // 40 words 
+const rates = 1; // 5 ratings 
+const titles = 1; // 5 votes
+const starts = 1; // ? new stories. Only works when available. (score / created > 30 ) match on RULES
+const score_to_stories_ratio = 50;
 
 // Queue Order
-var queue_write = 0;
-var queue_rate = writes;
-var queue_title = writes + rates;
-var queue_start = writes + rates + titles;
-var queue_rounds = writes + rates + titles + starts;
+const queue_write = 0;
+const queue_rate = queue_write + writes;
+const queue_title = queue_rate + rates;
+const queue_start = queue_title + titles;
+const queue_rounds = queue_start + starts;
 
 // Jquery 
 
 $(document).ready(function() {
-
 
     $.notify.defaults({
 
         globalPosition: 'bottom right',
         className: 'success'
 
-        /*
-        // whether to hide the notification on click
-        clickToHide: true,
-        // whether to auto-hide the notification
-        autoHide: true,
-        // if autoHide, hide after milliseconds
-        autoHideDelay: 5000,
-        // show the arrow pointing at the element
-        arrowShow: true,
-        // arrow size in pixels
-        arrowSize: 5,
-        // position defines the notification position though uses the defaults below
-        position: '...',
-        // default positions
-        elementPosition: 'bottom left',
-
-        // default style
-        style: 'bootstrap',
-        // default class (string or [string])
-        className: 'success',
-        // show animation
-        showAnimation: 'slideUp',
-        // show animation duration
-        showDuration: 400,
-        // hide animation
-        hideAnimation: 'slideDown',
-        // hide animation duration
-        hideDuration: 200,
-        // padding between element and notification
-        gap: 4
-        */
-    })
-
+    });
 
 });
+
 // Initialize Firebase
 
-var db = firebase.firestore();
-var storage = firebase.storage();
-var ui = new firebaseui.auth.AuthUI(firebase.auth());
-var uiConfig = {
+let db = firebase.firestore();
+let storage = firebase.storage();
+let ui = new firebaseui.auth.AuthUI(firebase.auth());
+let uiConfig = {
     callbacks: {
         signInSuccessWithAuthResult: (authResult, redirectUrl) => {
             // User successfully signed in.
@@ -330,7 +299,7 @@ var uiConfig = {
 ui.start('#firebaseui-auth-container', uiConfig);
 
 // not using this callback at the moment but
-var email_config = {};
+let email_config = {};
 
 firebase.auth().onAuthStateChanged((user) => {
 
@@ -364,7 +333,7 @@ firebase.auth().onAuthStateChanged((user) => {
 
 
                 // trying to find the right way to pass a name to the server, since it doesnt get there on account creation. shouldnt this come from the clone?
-                global_user.displayName = firebase.auth().currentUser.displayName.substring(0, 15);
+                //  global_user.displayName = firebase.auth().currentUser.displayName.substring(0, 15);
 
                 //don't used old queued stories, more will come shortly
                 queued_stories = [];
@@ -382,7 +351,7 @@ firebase.auth().onAuthStateChanged((user) => {
                     }).then(() => {
                         console.log("Got User's Story Info");
 
-                        // Reload Top Stories to add personal stars, in case they looked before login 
+                        // Reload Top Stories to add personal stars, in case they looked before login. will reload when clicked with fresh user data.
                         top_stories_loaded = recent_stories_loaded = false;
 
                     })
@@ -433,7 +402,7 @@ firebase.auth().onAuthStateChanged((user) => {
 
             if (global_user.photoURL.substring(0, 5) !== "https") {
 
-                var starsRef1 = storage.ref().child("Custom_Photos/" + global_user.photoURL);
+                let starsRef1 = storage.ref().child("Custom_Photos/" + global_user.photoURL);
 
                 starsRef1.getDownloadURL().then((url) => {
 
@@ -452,12 +421,55 @@ firebase.auth().onAuthStateChanged((user) => {
             $(".score").html(numberWithCommas(global_user.score));
 
 
+            // Recent USers
 
+            db.collection("Users").orderBy('last_login', 'desc').limit(recent_user_count).get().then((snapshot) => {
+                snapshot.forEach((doc) => {
+                    if (doc.exists) {
+
+                        let the_info = doc.data();
+
+                        let purl = the_info.photoURL;
+                        let pdn = the_info.displayName;
+                        let pun = doc.id;
+
+                        if (purl.substring(0, 4).toLowerCase() === "http")
+                            $("#recent_users_div").append("<img title=\"" + pdn + "\" src=" + purl + " onclick=\"get_user('" + pun + "')\"/>");
+                        else {
+                            storage.ref().child("Custom_Photos/" + purl).getDownloadURL().then((url) => {
+
+                                $("#recent_users_div").append("<img title=\"" + pdn + "\" src=" + url + " onclick=\"get_user('" + pun + "')\"/>");
+
+                            });
+                        }
+                    }
+                });
+            });
 
 
 
 
             // Listen For Server Updates, Spefically for Score and Write Queue
+
+            stop_messages = db.collection("Messages").doc(global_user.uid).onSnapshot((doc) => {
+
+
+                if (!doc.exists)
+                    return;
+
+                let message_data = doc.data().messages;
+
+                $("#messages_div").html('<p id="warning"><b>' + warning_message.title + '</b> ' + warning_message.message);
+
+                for (i = 0; i < message_data.length; i++) {
+
+                    $("#messages_div").append('<p><b>' + (message_data[i].title || "") + '</b> ' + (message_data[i].message || ""));
+                    user_has_messages = true;
+                }
+
+
+            });
+
 
             stop_announcements = db.collection("Messages").doc("global").onSnapshot((doc) => {
 
@@ -465,7 +477,7 @@ firebase.auth().onAuthStateChanged((user) => {
                 if (!doc.exists)
                     return;
 
-                var announcement_data = doc.data().announcements;
+                let announcement_data = doc.data().announcements;
 
                 $("#announcements_div").html('<p id="warning"><b>' + warning_message.title + '</b> ' + warning_message.message);
 
@@ -477,7 +489,6 @@ firebase.auth().onAuthStateChanged((user) => {
 
             });
 
-
             stop_queue = db.collection("Private").doc(global_user.uid).onSnapshot((doc) => {
 
 
@@ -485,7 +496,7 @@ firebase.auth().onAuthStateChanged((user) => {
                 if (!doc.exists)
                     return;
 
-                var private_data = doc.data();
+                let private_data = doc.data();
 
                 if (typeof global_user.demerits === "undefined")
                     global_user.demerits = private_data.demerits;
@@ -502,17 +513,25 @@ firebase.auth().onAuthStateChanged((user) => {
                 if (on_dead_queue)
                     get_queue(true);
 
-                if (global_user.score / private_data.demerits < max_demerit_percentage)
-                    $("#warning").show();
-                else
-                    $("#warning").hide();
+                // New demerit added
+                if (private_data.demerits > global_user.demerits) {
 
-                if (private_data.demerits > global_user.demerits)
-                    $.notify("One of your submissions was rejected by other users.", "error");
+                    // over threshold for first time
+                    if (!warning_shown && (global_user.score / private_data.demerits < max_demerit_percentage)) {
+
+                        warning_shown = true;
+                        $("#warning").show();
+                        $.notify("Please ensure you are making quality submissions!", "warn");
+                        $.notify("Several of your submissions have been rejected by other users.", "warn");
+                    } else {
+                        // new demerit but not new threshold
+                        $.notify("One of your submissions was rejected by other users.", "error");
+                    }
+                }
 
                 global_user.demerits = private_data.demerits;
 
-                console.log("queue updated", doc.data());
+                console.log("queue updated", private_data);
 
             });
 
@@ -521,22 +540,30 @@ firebase.auth().onAuthStateChanged((user) => {
                 if (!doc.exists)
                     return;
 
-                if (doc.data().score > global_user.score)
-                    $.notify("Your score went up " + (doc.data().score - global_user.score) + (((doc.data().score - global_user.score) === 1) ? " point!" : " points!"));
+                let score_data = doc.data();
 
-                Object.assign(global_user, doc.data());
+                if (score_data.score > global_user.score) {
+                    $.notify("Your score went up " + (score_data.score - global_user.score) + (((score_data.score - global_user.score) === 1) ? " point!" : " points!"));
+                    $(".score").html(numberWithCommas(score_data.score));
 
-                global_user.displayName = firebase.auth().currentUser.displayName.substring(0, 15);
+                    // If score went up enough to fix warning
+                    if (score_data.score / global_user.demerits < max_demerit_percentage)
+                        $("#warning").hide();
 
-                $(".score").html(numberWithCommas(global_user.score));
+                }
+                Object.assign(global_user, score_data);
+
+                // THIS IS BAD
+                // global_user.displayName = firebase.auth().currentUser.displayName.substring(0, 15);
 
                 console.log("score updated");
 
             });
 
+
+            // End of ALl Users workflow load
             get_more_titles();
             get_more_rates();
-
             hash();
 
         });
@@ -568,11 +595,12 @@ firebase.auth().onAuthStateChanged((user) => {
 function blank() {
 
 
+
     user_stories = {};
     global_user = {};
     queued_stories = [];
     global_user.recent_words = [];
-    queue_loaded = top_stories_loaded = recent_stories_loaded = false;
+    queue_loaded = top_stories_loaded = recent_stories_loaded = warning_shown = false;
     my_photo_url = "https://basher.app/images/user.png";
 
     counter = {
@@ -589,12 +617,12 @@ function blank() {
 if (!HTMLCanvasElement.prototype.toBlob) {
     Object.defineProperty(HTMLCanvasElement.prototype, 'toBlob', {
         value: function(callback, type, quality) {
-            var dataURL = this.toDataURL(type, quality).split(',')[1];
+            let dataURL = this.toDataURL(type, quality).split(',')[1];
             setTimeout(function() {
-                var binStr = atob(dataURL),
+                let binStr = atob(dataURL),
                     len = binStr.length,
                     arr = new Uint8Array(len);
-                for (var i = 0; i < len; i++) {
+                for (let i = 0; i < len; i++) {
                     arr[i] = binStr.charCodeAt(i);
                 }
                 callback(new Blob([arr], { type: type || 'image/png' }));
@@ -611,7 +639,7 @@ function compress(e) {
     console.log("3");
     reader.onload = event => {
         console.log("2");
-        var img = new Image();
+        let img = new Image();
         img.src = event.target.result;
         img.onerror = (error) => {
             console.log(error);
@@ -639,8 +667,8 @@ function compress(e) {
 
 function hash() {
 
-    var show_hash = getQueryVariable("show");
-    var id_hash = getQueryVariable("id");
+    let show_hash = getQueryVariable("show");
+    let id_hash = getQueryVariable("id");
 
     if (global_user.uid || false) {
         $(".not_logged_in").hide();
@@ -675,19 +703,19 @@ window.onpopstate = function(event) {
 
 function log_error(error) {
     console.error(error);
-    return (false);
+    return (true);
 }
 
 function getQueryVariable(variable) {
-    var query = window.location.search.substring(1);
-    var vars = query.split("&");
-    for (var i = 0; i < vars.length; i++) {
-        var pair = vars[i].split("=");
+    let query = window.location.search.substring(1);
+    let vars = query.split("&");
+    for (let i = 0; i < vars.length; i++) {
+        let pair = vars[i].split("=");
         if (pair[0] == variable) {
             return pair[1];
         }
     }
-    return (false);
+    return false;
 }
 
 
@@ -705,16 +733,21 @@ function sanitize(word) {
 
 function check_input() {
 
-    var the_input = sanitize($("#f1").val());
+    let the_input = sanitize($("#f1").val());
 
     // Sanitize input on the fly
     $("#f1").val(the_input);
 
     if (the_input == "") {
         $(".queue new-word .approve").hide();
-        if ((story_db.story || false) && story_db.story.length > minimum_story_length)
+        if ((story_db.story || false) && story_db.story.length > minimum_story_length) {
+            $(".queue h2").html("Write The Next Word, Or Mark The Story Finished");
             $(".flag").show();
+        }
     } else {
+        if (story_db.id || false)
+            $(".queue h2").html("Write The Next Word");
+
         $(".queue new-word .approve").show();
         $(".flag").hide();
     }
@@ -725,12 +758,13 @@ function logout() {
     stop_score();
     stop_story();
     stop_announcements();
+    stop_messages();
     $("#register").show();
     firebase.auth().signOut();
 }
 
 function validateEmail(email) {
-    var re = /\S+@\S+\.\S+/;
+    let re = /\S+@\S+\.\S+/;
     return re.test(email);
 }
 
@@ -753,14 +787,14 @@ function star(raw_number, user_score) {
 
     // Either black or gold star, wholes only, then maybe half
 
-    var stars = Math.floor(raw_number);
+    let stars = Math.floor(raw_number);
     if (user_score)
         stars = Math.floor(user_score);
 
 
 
-    var return_string = '';
-    var half_star = (raw_number - stars >= .5) ? true : false;
+    let return_string = '';
+    let half_star = (raw_number - stars >= .5) ? true : false;
 
     // Draw Black or Gold Stars 
 
@@ -801,7 +835,7 @@ function resend_email() {
 
 function change_name() {
 
-    var new_name = $("#new_name").val();
+    let new_name = $("#new_name").val();
 
 
     if (new_name.length > 15) {
@@ -829,6 +863,8 @@ function change_name() {
 
                 $(".user_id").html(new_name);
                 global_user.displayName = new_name;
+                $.notify("Display name updated.");
+                $("change_name").hide();
 
             })
             .catch((error) => {
@@ -849,8 +885,8 @@ function change_name() {
 
 function change_email() {
 
-    var new_email = $("#new_email").val();
-    var their_password = $("#new_email_password").val();
+    let new_email = $("#new_email").val();
+    let their_password = $("#new_email_password").val();
 
 
     if (!validateEmail(new_email) || their_password.length < 6) {
@@ -863,9 +899,9 @@ function change_email() {
 
 
 
-    var credential = firebase.auth.EmailAuthProvider.credential(global_user.email, their_password);
+    let credential = firebase.auth.EmailAuthProvider.credential(global_user.email, their_password);
 
-    firebase.auth().currentUser.reauthenticateAndRetrieveDataWithCredential(credential).then(() => {
+    firebase.auth().currentUser.reauthenticateWithCredential(credential).then(() => {
         // User re-authenticated.
 
         db.collection("Users").doc(global_user.uid).update({
@@ -874,6 +910,9 @@ function change_email() {
 
                 // $(".email").html(new_email);
                 //  global_user.email = new_email;
+                $.notify("Email address updated.");
+                $("change_email").hide();
+                $(".email").html(new_email);
                 firebase.auth().currentUser.sendEmailVerification(email_config);
 
 
@@ -892,9 +931,9 @@ function change_email() {
 
 function change_password() {
 
-    var old_password = $("#old_password").val();
-    var new_password = $("#new_password").val();
-    var confirm_password = $("#confirm_password").val();
+    let old_password = $("#old_password").val();
+    let new_password = $("#new_password").val();
+    let confirm_password = $("#confirm_password").val();
 
     if (new_password !== confirm_password || new_password.length < 6 || new_password == old_password) {
         $("change_password .error-code").show();
@@ -904,7 +943,7 @@ function change_password() {
     document.getElementById("reset_me_password").reset();
     $("change_password .error-code").hide();
 
-    var credential = firebase.auth.EmailAuthProvider.credential(global_user.email, old_password);
+    let credential = firebase.auth.EmailAuthProvider.credential(global_user.email, old_password);
 
     global_user.reauthenticateAndRetrieveDataWithCredential(credential).then(() => {
         // User re-authenticated.
@@ -912,6 +951,8 @@ function change_password() {
         global_user.updatePassword(new_password).then(() => {
 
             $("change_password .error-code").hide();
+            $.notify("Password changed.");
+            $("change_password").hide();
 
         }).catch((error) => {
 
@@ -932,7 +973,7 @@ function imageNotFound(found) {
 
     // This function runs after the image is stored, when it renders. If it fails to load, we go back to default image.
 
-    var write_this = "https://basher.app/images/user.png";
+    let write_this = "https://basher.app/images/user.png";
     global_user.photoURL = write_this;
 
     if (found) {
@@ -942,6 +983,8 @@ function imageNotFound(found) {
 
     $("loader-icon").hide();
     $("user-photo").html('<img src="' + global_user.photoURL + '">');
+    $.notify("Profile photo updated.");
+    my_photo_url = global_user.photoURL;
 
     db.collection("Users").doc(global_user.uid).update({
         "photoURL": write_this
@@ -968,11 +1011,11 @@ function upload_new_image(the_file) {
     //      document.getElementById("reset_me_upload").reset();
     $("loader-icon").css("display", "inline");
 
-    var uploadTask = storage.ref().child("Custom_Photos/" + global_user.uid).put(the_file);
+    let uploadTask = storage.ref().child("Custom_Photos/" + global_user.uid).put(the_file);
 
     uploadTask.on('state_changed', (snapshot) => {
 
-        var progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        let progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
 
         console.log('Upload is ' + progress + '% done and running is ' + firebase.storage.TaskState.RUNNING);
 
@@ -1070,11 +1113,24 @@ function get_start() {
 
 }
 
+function update_history(url, title) {
+
+    title = (title ? title : "Write One Word Of The Next Great Story!");
+
+    if (location.hostname !== "localhost") {
+
+        if (gtag || false)
+            gtag('config', 'UA-XXXXXXXXX-1', { 'page_path': '/' + url });
+
+        history.pushState(null, "Basher! " + title, "https://basher.app/" + (url ? "?show=" + url : ""));
+    }
+
+    document.title = "Basher! " + title;
+}
+
 function get_about() {
 
-    history.pushState({
-        "page": "about"
-    }, "Basher! About Us", "https://basher.app/?show=about");
+    update_history("about", "About Us");
 
     div_loading(false, "about", true);
 
@@ -1083,12 +1139,7 @@ function get_about() {
 
 function get_queue(ready_for_new_queue) {
 
-    history.pushState({
-        "page": "queue"
-    }, "Basher! Write", "https://basher.app/?show=write");
-
-
-
+    update_history("write", "Write");
 
     // If the queue has already been loaded once, just show it. Doesn't need to be reloaded.
 
@@ -1107,7 +1158,7 @@ function get_queue(ready_for_new_queue) {
 
     // Check init for size of queue, but here's where it plays out:
 
-    var to_load = "";
+    let to_load = "";
 
     if (counter.queue % queue_rounds < queue_rate) {
         to_load = "write";
@@ -1124,11 +1175,6 @@ function get_queue(ready_for_new_queue) {
     counter.queue++;
 
     // Here we download the queues, make sure there's a good match, before generating the pages.
-
-    // Sets to true when a good match is found
-    var queue_ready = false;
-
-
 
     switch (to_load) {
 
@@ -1154,15 +1200,16 @@ function get_queue(ready_for_new_queue) {
 
         case "rate":
 
-            counter.rate++;
+
 
             if (counter.rate + 1 >= queued_rates.length) {
                 get_more_rates();
             }
 
             if (queued_rates[counter.rate] || false) {
-                queue_ready = true;
+
                 load_queue(queued_rates[counter.rate], "rate");
+                counter.rate++;
             } else {
                 console.log("rate finisihed. trying whats after.");
                 get_more_rates();
@@ -1174,15 +1221,16 @@ function get_queue(ready_for_new_queue) {
 
         case "title":
 
-            counter.title++;
+
 
             if (counter.title + 1 >= queued_titles.length) {
                 get_more_titles();
             }
 
             if (queued_titles[counter.title] || false) {
-                queue_ready = true;
+
                 load_queue(queued_titles[counter.title], "title");
+                counter.title++;
             } else {
                 console.log("title finisihed. trying whats after.");
                 get_more_titles();
@@ -1195,15 +1243,27 @@ function get_queue(ready_for_new_queue) {
 
             counter.start++;
 
-            if (counter.start % starts_multiplier == 0 && stories_started < stories_they_can_create) {
-                stories_started++;
+            // This shouldbe same condition as in RULES
+            if (global_user.stories_created === 0 || (global_user.score / global_user.stories_created > score_to_stories_ratio)) {
+
                 load_queue(null, "start");
+
             } else {
 
                 console.log("not ready to start yet.");
 
                 if (queued_stories[counter.story] || false) {
+                    console.log("ready to write, tho");
                     counter.queue = queue_write;
+                    get_queue(true);
+                } else if (queued_rates[counter.rate] || false) {
+                    console.log("ready to rate, tho");
+                    counter.queue = queue_rate;
+                    get_queue(true);
+
+                } else if (queued_titles[counter.title] || false) {
+                    console.log("ready to title, tho");
+                    counter.queue = queue_title;
                     get_queue(true);
                 } else {
                     div_loading(true, "error", true);
@@ -1293,21 +1353,18 @@ function load_queue(story_id, lets_do_this) {
 
     // Once we know what type of queue we're loading, do this. Reset everything, then show what we need.
 
-
+    $(".queue button").attr("disabled", false);
     $("#queue_rating").removeClass();
-
-    $(".queue input").val("");
-
-    $("select").val("");
-
+    $(".queue input, select").val("");
     $(".queue contributors-wrapper ul, .queue the-title, .queue the-story, .queue suggest-title ul, .queue pending-word").html("");
-
-    $("select, .queue new-word, .queue approval-wrapper, .queue rating-wrapper, .queue suggest-title, .queue the-title, .queue approval-wrapper, .queue new-word .approve, .queue .flag, .queue .error-code").hide();
+    $("select, .queue new-word, .queue approval-wrapper, .queue rating-wrapper, .queue suggest-title, .queue the-title, .queue approval-wrapper, .queue new-word .approve, .queue .flag, .queue .error-code, button.deny").hide();
 
     if (lets_do_this == "start") {
 
+
         document.getElementById("f1").focus();
         $('new-word').css("display", "inline");
+
         $(".queue h2").html("Write The First Word Of The Next Great Story");
         $(".queue contributors-wrapper ul").html('<li onclick="get_user(\'' + global_user.uid + '\')">' + global_user.displayName + '</li>');
 
@@ -1326,7 +1383,7 @@ function load_queue(story_id, lets_do_this) {
             story_db = doc.data();
             story_db.id = story_id;
 
-            var story_string = "";
+            let story_string = "";
 
             story_db.story.forEach((value) => {
                 story_string = story_string + value;
@@ -1336,7 +1393,7 @@ function load_queue(story_id, lets_do_this) {
 
             // Load Rating
 
-            var user_rating = null;
+            let user_rating = null;
 
             if (user_stories || false) {
 
@@ -1356,6 +1413,7 @@ function load_queue(story_id, lets_do_this) {
             $(".queue rating-wrapper .votes_cast").html("(" + story_db.rating.score.toFixed(2) + " rating - " + story_db.rating.votes + ((story_db.rating.votes !== 1) ? " votes)" : " vote)"));
             $("#queue_rating").addClass(story_id);
             $("#queue_rating").html(star(story_db.rating.score, user_rating));
+            $("button.deny").show();
 
 
             // Load contributors 
@@ -1367,7 +1425,7 @@ function load_queue(story_id, lets_do_this) {
 
                     if (un.exists) {
 
-                        var cont = un.data();
+                        let cont = un.data();
 
                         $(".queue contributors-wrapper ul").append('<li onclick="get_user(\'' + one + '\')">' + cont.displayName + '</li>');
                     } else
@@ -1404,6 +1462,8 @@ function load_queue(story_id, lets_do_this) {
 
                 });
 
+                $(".queue rating-wrapper").show();
+
             } else if (lets_do_this == "rate") {
 
                 $(".queue h2").html("Rate This Story");
@@ -1430,7 +1490,7 @@ function load_queue(story_id, lets_do_this) {
                     if (!doc.exists)
                         return;
 
-                    var the_data = doc.data();
+                    let the_data = doc.data();
 
                     if (the_data.story.length !== story_db.story.length || the_data.date_finished !== story_db.date_finished) {
 
@@ -1459,7 +1519,7 @@ function load_queue(story_id, lets_do_this) {
 
                     $(".queue h2").html("Approve Or Reject The The Last Word");
 
-                    var pendingword = story_db.pending_word.word;
+                    let pendingword = story_db.pending_word.word;
                     if (punc.indexOf(pendingword.substring(0, 1)) === -1)
                         pendingword = (story_db.pending_word.punctuation || "") + "&nbsp;" + pendingword.trim();
                     $(".queue pending-word").html(pendingword);
@@ -1493,6 +1553,8 @@ function load_queue(story_id, lets_do_this) {
 
 function approve() {
 
+    $(".queue button").attr("disabled", true);
+
     if (story_db.pending_word.upvotes == 0) {
 
         db.collection("Users").doc(global_user.uid).collection("Stories").doc(story_db.id).set({
@@ -1502,10 +1564,12 @@ function approve() {
             }).then(() => {
                 console.log("Yes vote accepted.");
                 $.notify("Your vote has been counted!");
-                return true;
+                return;
 
             })
             .catch(log_error);
+
+
         return get_queue(true);
 
     }
@@ -1519,7 +1583,7 @@ function approve() {
         $("main h2:visible")[0].scrollIntoView();
         //window.scrollTo(0, Math.abs(document.getElementsByTagName("nav")[0].getBoundingClientRect().top) + Math.abs(document.getElementsByTagName("nav")[0].getBoundingClientRect().bottom));
 
-        $(".queue h2").html("Great! Now Rate And Suggest A Title");
+        $(".queue h2").html("Great! Suggest A Title And Rate");
 
         $(".queue suggest-title ul").html('<li><input type="radio" name=\"title_radio\" value="1" checked /><input type="text" id="submit_title"  maxlength="45" /></li>');
 
@@ -1549,10 +1613,12 @@ function approve() {
             }).then(() => {
                 console.log("Yes vote accepted.");
                 $.notify("You finished a story!");
-                return true;
+                return;
             })
             .catch(log_error);
 
+        $(".queue button").attr("disabled", false);
+        stop_story();
         return;
 
     }
@@ -1567,13 +1633,14 @@ function approve() {
 
         if (un.exists) {
 
-            var cont = un.data();
+            let cont = un.data();
 
             $(".queue contributors-wrapper ul").append('<li onclick="get_user(\'' + story_db.pending_word.contributor + '\')">' + cont.displayName + '</li>');
 
         } else
             console.error("Get newest contributor user name failed.");
     });
+
 
     // Money!
     write_next();
@@ -1583,6 +1650,7 @@ function approve() {
 
 function write_next() {
 
+    $(".queue button").attr("disabled", false);
 
     $("main h2:visible")[0].scrollIntoView();
     // window.scrollTo(0, Math.abs(document.getElementsByTagName("nav")[0].getBoundingClientRect().top) + Math.abs(document.getElementsByTagName("nav")[0].getBoundingClientRect().bottom));
@@ -1605,8 +1673,11 @@ function write_next() {
 
 function deny() {
 
+    $(".queue button").attr("disabled", true);
+
     if (story_db.pending_word.word.trim() == "[END]") {
         $(".flag").hide();
+
         write_next();
 
     } else {
@@ -1624,18 +1695,30 @@ function deny() {
             }, { merge: true }).then(() => {
                 console.log("No vote counted.");
                 $.notify("Your vote has been counted!");
+                return;
 
-                get_queue(true);
+
 
             })
             .catch(log_error);
+
+
+        get_queue(true);
 
     }
 }
 
 $(document).on('keypress', function(e) {
     if (e.which == 13) {
-        submit();
+
+        if ($("change-email:visible").length === 1)
+            change_email();
+        else if ($("change-name:visible").length === 1)
+            change_name();
+        else if ($("change-password:visible").length === 1)
+            change_password();
+        else if ($("new-word input:visible").length === 1)
+            submit();
     }
 });
 
@@ -1659,7 +1742,7 @@ function dictionary_check(passed, sanitized) {
 
         }
 
-
+        $(".queue button").attr("disabled", false);
         return;
     } else {
 
@@ -1679,14 +1762,16 @@ function dictionary_check(passed, sanitized) {
 
                 }).then(() => {
                     console.log("New word posted to new story.");
-
                     $.notify("Your story has entered the queue!");
-
-                    $(".queue loader-icon").hide();
-                    get_queue(true);
+                    return;
 
                 })
                 .catch(log_error);
+
+            $(".queue loader-icon").hide();
+            get_queue(true);
+
+
         }
 
 
@@ -1697,22 +1782,34 @@ function dictionary_check(passed, sanitized) {
 
 function submit(flag_end) {
 
+    if (flag_end && !flag_end_confirmation) {
+        $(".queue h2").html("Are you sure this story is finished?");
+        flag_end_confirmation = true;
+        return;
+    }
+
+    flag_end_confirmation = false;
+
+    $(".queue button").attr("disabled", true);
 
     if (flag_end) {
 
         submit_word("[END]");
         div_loading(false, "queue");
+
         return;
 
     }
 
-    var sanitized = sanitize($("new-word input").val());
+    let sanitized = sanitize($("new-word input").val());
 
-    if (sanitized == "")
+    if (sanitized == "") {
+        $(".queue button").attr("disabled", false);
         return;
-    else if (sanitized == last_entry) {
+    } else if (sanitized == last_entry) {
         $(".queue .error-code").html("You already submitted that word.");
         $(".queue .error-code").show();
+        $(".queue button").attr("disabled", false);
         return;
     }
 
@@ -1739,6 +1836,7 @@ function submit(flag_end) {
 
             $(".queue .error-code").html("An error occured submitting that word.");
             $(".queue .error-code").show();
+            $(".queue button").attr("disabled", false);
             return;
         });
 
@@ -1767,11 +1865,14 @@ function submit_word(this_word) {
             else
                 $.notify("Your word has been queued for approval!");
 
-            $(".queue loader-icon").hide();
-            get_queue(true);
+            return;
 
         })
         .catch(log_error);
+
+    $(".queue loader-icon").hide();
+    get_queue(true);
+
 
 }
 
@@ -1807,8 +1908,8 @@ function vote(num_stars, which_db) {
         $("." + which_story + " .star_5").addClass("gold");
 
 
-    var new_votes = which_db.rating.votes + 1;
-    var new_score = (which_db.rating.votes * which_db.rating.score + num_stars) / new_votes;
+    let new_votes = which_db.rating.votes + 1;
+    let new_score = (which_db.rating.votes * which_db.rating.score + num_stars) / new_votes;
 
     console.log(new_votes, new_score);
 
@@ -1827,6 +1928,7 @@ function vote(num_stars, which_db) {
             console.log("Ratigng submitted!");
             $.notify("Rating accepted!");
 
+            return;
         })
         .catch(log_error);
 
@@ -1846,9 +1948,14 @@ function submit_approved_title(vote, title_to_submit) {
         "title_vote": vote,
         "submit_title": (title_to_submit || "")
 
-    }, { merge: true }).catch(log_error);
+    }, { merge: true }).then(() => {
+        $.notify("Title vote submitted!");
+        return;
+    }).catch(log_error);
 
-    $.notify("Title vote submitted!");
+
+
+
 
     get_queue(true);
 
@@ -1856,13 +1963,17 @@ function submit_approved_title(vote, title_to_submit) {
 
 function vote_on_title() {
 
-    var vote = parseInt($('input[name=title_radio]:checked').val() || 0);
+    $(".queue button").attr("disabled", true);
 
-    var submit_title = "";
+    let vote = parseInt($('input[name=title_radio]:checked').val() || 0);
+
+    let submit_title = "";
 
     // if none is checked val will be 0
-    if (!vote)
+    if (!vote) {
+        $(".queue button").attr("disabled", false);
         return;
+    }
 
     // if submitting a new title
     if (vote === 1) {
@@ -1870,8 +1981,11 @@ function vote_on_title() {
         submit_title = $('#submit_title').val().trim();
 
         // if they checked it but wrote nothing(orjust spaces)
-        if (submit_title == "")
+        if (submit_title == "") {
+            $(".queue button").attr("disabled", false);
             return;
+
+        }
 
         $.get({
             url: "//us-central1-milli0ns0fm0nkeys.cloudfunctions.net/addTitle",
@@ -1889,6 +2003,7 @@ function vote_on_title() {
             console.log(error);
             $(".queue .error-code").html("An error occured submitting that title.");
             $(".queue .error-code").show();
+            $(".queue button").attr("disabled", false);
             return;
         });
     } else
@@ -1910,7 +2025,7 @@ function get_story(story_id) {
             read_db.id = story_id;
 
             // Load Story Basics 
-            var story_string = "";
+            let story_string = "";
 
             read_db.story.forEach((value) => {
                 story_string = story_string + value;
@@ -1920,7 +2035,7 @@ function get_story(story_id) {
 
             // Load Title
 
-            var page_title = "";
+            let page_title = "";
             if (read_db.title) {
                 $(".story the-title").show();
                 $(".story the-title").html(read_db.title);
@@ -1928,15 +2043,13 @@ function get_story(story_id) {
             } else
                 $(".story the-title").hide();
 
-            history.pushState({
-                "page": "story"
-            }, "Basher! Story " + page_title, "https://basher.app/?show=story&id=" + read_db.id);
+            var uri = encodeURIComponent(read_db.title);
 
-
+            update_history("story&id=" + read_db.id + "&title=" + uri, "Story: " + page_title);
 
             if (typeof addthis !== "undefined") {
 
-                addthis.update('share', 'url', "https://basher.app/?show=story&id=" + read_db.id);
+                addthis.update('share', 'url', "https://basher.app/?show=story&id=" + read_db.id + "&title=" + uri);
                 addthis.update('share', 'title', "Basher! Story: " + page_title);
                 addthis.update('share', 'description', "Read this story written one word at a time by people of the Internet.");
                 addthis.update('share', 'media', "https://basher.app/images/logo.png");
@@ -1948,7 +2061,7 @@ function get_story(story_id) {
             $(".story rating-wrapper .votes_cast").html("(" + read_db.rating.score.toFixed(2) + " rating - " + read_db.rating.votes + ((read_db.rating.votes !== 1) ? " votes)" : " vote)"));
             $("#story_rating").removeClass();
 
-            var user_rating = null;
+            let user_rating = null;
 
 
             if (user_stories[read_db.id] || false)
@@ -1975,7 +2088,7 @@ function get_story(story_id) {
 
                     if (un.exists) {
 
-                        var cont = un.data();
+                        let cont = un.data();
 
                         $(".story contributors-wrapper ul").append('<li onclick="get_user(\'' + one + '\')">' + cont.displayName + '</li>');
                     } else
@@ -1993,9 +2106,9 @@ function get_story(story_id) {
 }
 
 function get_signin() {
-    history.pushState({
-        "page": "start"
-    }, "Basher!  Write One Word Of The Next Great Story", "https://basher.app/?show=start");
+
+    update_history();
+
     div_loading(true, 'start', true);
 }
 
@@ -2005,13 +2118,8 @@ function get_user(diff_user) {
 
     div_loading(false, "user");
 
-    $(".your_stories").hide();
-    $(".started_stories").hide();
-    $(".favorite_stories").hide();
-    $("user-settings").hide();
-    $(".recent_words").hide();
+    $(".your_stories, .started_stories, .favorite_stories, user-settings, .recent_words, .messages").hide();
     $("recent-words").html("");
-
 
     if (diff_user && diff_user !== global_user.uid) {
 
@@ -2019,14 +2127,10 @@ function get_user(diff_user) {
 
             if (doc.exists) {
 
-                var local_user = doc.data();
+                let local_user = doc.data();
                 local_user.uid = doc.id;
 
-                history.pushState({
-                    "page": "user"
-                }, "Basher! Profile: " + local_user.displayName, "https://basher.app/?show=profile&id=" + local_user.uid);
-
-
+                update_history("profile&id=" + local_user.uid, "Profile: " + local_user.displayName);
 
                 process_user(local_user);
 
@@ -2039,12 +2143,13 @@ function get_user(diff_user) {
 
         // add settings  if its your profile we're loading
 
+        if (user_has_messages)
+            $(".messages").show();
+
         $("user-settings").show();
         $(".email").html(global_user.email);
 
-        history.pushState({
-            "page": "user"
-        }, "Basher! Your Profile", "https://basher.app/?show=profile");
+        update_history("profile", "Your Profile");
 
         process_user(global_user);
 
@@ -2085,7 +2190,7 @@ function process_user(local_user) {
 
     else {
 
-        var starsRef = storage.ref().child("Custom_Photos/" + local_user.photoURL);
+        let starsRef = storage.ref().child("Custom_Photos/" + local_user.photoURL);
 
         starsRef.getDownloadURL().then((url) => {
 
@@ -2094,6 +2199,8 @@ function process_user(local_user) {
         }).catch(log_error);
 
     }
+
+    get_stories("started", local_user);
 
     get_stories("your", local_user);
 
@@ -2173,13 +2280,15 @@ function get_stories(which_type, local_user) {
 }
 
 
+
+
 function process_snapshot(snapshot, which_type) {
 
-    var stories = [];
+    let stories = [];
 
     snapshot.forEach((doc) => {
         if (doc.exists) {
-            var data = doc.data();
+            let data = doc.data();
             data.id = doc.id;
             stories.push(data);
 
@@ -2188,34 +2297,41 @@ function process_snapshot(snapshot, which_type) {
         }
     });
 
-    $("." + which_type + "_stories table").html("<tr><th>Story</th><th>Rating</th><th class=\"date\">Completed</th></tr>");
+    // $("." + which_type + "_stories table").html("<tr><th>Story</th><th>Rating</th><th class=\"date\">Completed</th></tr>");
 
     // Your stories also includes a "started" stories table, which is your stories but where your word is first
 
-    if (which_type === "your") {
-        $(".started_stories table").html("<tr><th>Story</th><th>Rating</th><th class=\"date\">Completed</th></tr>");
-    }
-
-    var story_started = false;
+    let story_started = false;
+    let which_page = "";
+    let page_counter = 0;
+    let at_least_one = false;
+    global_tables[which_type] = {};
+    global_tables[which_type]["page1"] = "<tr><th>Story</th><th>Rating</th><th class=\"date\">Completed</th></tr>";
 
     stories.forEach((the_story, index) => {
 
-        var story_string = "";
+        if (index % stories_per_page === 0) {
+            page_counter++;
+            which_page = "page" + page_counter;
+
+        } else
+            at_least_one = true;
+
+        let story_string = "";
 
         the_story.story.forEach((value) => {
-            story_string = story_string + value;
-
+            story_string += value;
         });
 
-        var the_date = in_progress_string;
+        let the_date = in_progress_string;
 
         if (the_story.date_finished) {
-            var new_date = new Date(parseInt(the_story.date_finished));
+            let new_date = new Date(parseInt(the_story.date_finished));
             the_date = (new_date.getMonth() + 1) + '/' + new_date.getDate() + '/' + new_date.getFullYear();
         }
 
-        var title = story_string;
-        var is_long = false;
+        let title = story_string;
+        let is_long = false;
 
         if (the_story.title)
             title = the_story.title;
@@ -2231,7 +2347,7 @@ function process_snapshot(snapshot, which_type) {
         if (is_long)
             title = title + "...";
 
-        var user_rating = null;
+        let user_rating = null;
 
         if (user_stories || false) {
 
@@ -2242,34 +2358,45 @@ function process_snapshot(snapshot, which_type) {
 
         // if the first word was written by this user, flip it to started stories (not in both)
 
-        if (which_type === "your" && the_story.contributors[0] == global_user.uid) {
-            which_type = "started";
-            story_started = true;
+        if (which_type !== "started" || (the_story.contributors[0] == global_user.uid)) {
+
+            // $("." + which_type + "_stories table").append("<tr class=\"" + the_story.id + "\"><td class=\"title\" onclick=\"get_story('" + the_story.id + "')\">" + title + "</td><td class=\"rating\">" + star(the_story.rating.score, user_rating) + "</td><td class=\"date\">" + the_date + "</td></tr>");
+            global_tables[which_type][which_page] += "<tr class=\"" + the_story.id + "\"><td class=\"title\" onclick=\"get_story('" + the_story.id + "')\">" + title + "</td><td class=\"rating\">" + star(the_story.rating.score, user_rating) + "</td><td class=\"date\">" + the_date + "</td></tr>";
+
         }
 
-        $("." + which_type + "_stories table").append("<tr class=\"" + the_story.id + "\"><td class=\"title\" onclick=\"get_story('" + the_story.id + "')\">" + title + "</td><td class=\"rating\">" + star(the_story.rating.score, user_rating) + "</td><td class=\"date\">" + the_date + "</td></tr>");
-
-
-        if (index < 2)
-            $('.' + which_type + '_stories').show();
-
-        // Flip it back, because we're in a loop still
-        if (which_type === "started")
-            which_type = "your";
 
     });
 
-    if (story_started)
-        $(".started_stories").show();
+    if (at_least_one) {
+
+        $('.' + which_type + '_stories table').html(global_tables[which_type]["page1"]);
+
+        if (global_tables[which_type]["page2"] || false)
+            $('.' + which_type + '_stories table').append('<tr class="more"><td colspan=3 alt="Load More" onclick="load_more(\'' + which_type + '\',2)">...</td></tr>');
+
+
+        $('.' + which_type + '_stories').show();
+    }
+
 
 }
 
+function load_more(which_type, which_page) {
+
+    $('.' + which_type + '_stories table tr:last').remove();
+
+    $('.' + which_type + '_stories table').append(global_tables[which_type]["page" + which_page]);
+
+    if (global_tables[which_type]["page" + (which_page + 1)] || false)
+        $('.' + which_type + '_stories table').append('<tr class="more"><td colspan=3 onclick="load_more(\'' + which_type + '\',' + (which_page + 1) + ')">...</td></tr>');
+
+}
+
+
 function get_top_stories() {
 
-    history.pushState({
-        "page": "top"
-    }, "Basher! Top Stories", "https://basher.app/?show=top");
-
+    update_history("top", "Top Stories");
 
     if (top_stories_loaded) {
 
@@ -2290,10 +2417,7 @@ function get_top_stories() {
 
 function get_recent_stories() {
 
-    history.pushState({
-        "page": "recent"
-    }, "Basher! Just Finished", "https://basher.app/?show=recent");
-
+    update_history("recent", "Just Finished");
 
     if (recent_stories_loaded) {
 
