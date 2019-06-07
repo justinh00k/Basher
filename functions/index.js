@@ -1,3 +1,5 @@
+require('dotenv').config({ debug: process.env.DEBUG }); // hide twitter api
+
 // The Cloud Functions for Firebase SDK to create Cloud Functions and setup triggers.
 const functions = require('firebase-functions');
 
@@ -45,10 +47,10 @@ var banned_words = ["niger", "dick", "retard", "asshole", "shit", "shitty", "shi
 var Twit = require('twit')
 
 var T = new Twit({
-    consumer_key: '4SwyIBJLwcRz5bwvbUJxZ0JRf',
-    consumer_secret: 'b6Yv8E7MSxCplNzPpVzWMQY5fz5DEaH1N6RAMn2vbbwBcKPiko',
-    access_token: '6658652-ozef2rLMnlvqBjfAy6FTmaUkqdkGjWtMbvsVsAMomv',
-    access_token_secret: 'tcMe9R8PUzz09S2vVsimjHqF6Xe8PybDu8eBaHGZeI4z1',
+    consumer_key: process.env.CONSUMER_KEY,
+    consumer_secret: process.env.CONSUMER_SECRET,
+    access_token: process.env.ACCESS_TOKEN,
+    access_token_secret: process.env.ACCESS_TOKEN_SECRET,
     timeout_ms: 60 * 1000, // optional HTTP request timeout to apply to all requests.
     strictSSL: true, // optional - requires SSL certificates to be valid.
 })
