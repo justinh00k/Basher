@@ -177,9 +177,23 @@ let queued_titles = [];
 let queued_stories = [];
 
 const punc = [".", ",", "!", "?"];
-
 const warning_message = { "title": "Warning", "message": "Several of your submissions have been rejected by other users. Please ensure you are making quality submissions!", "timestamp": 0 };
-const max_demerit_percentage = 50;
+const in_progress_string = '<span class="progress">in progress</span>';
+const default_title = "Basher! Write One Word Of The Next Great Story!";
+let my_photo_url = "https://basher.app/images/user.png";
+
+// DIp switches
+const max_demerit_percentage = 50; // not server enforced
+const number_of_messages = 10;
+const limit_count = 100; // firebase rule 
+const stories_per_page = 25; // 4 pages
+const recent_user_count = 24; // firebase rule
+const score_to_stories_ratio = 25 * 5; // 25 words -- firebase rule (currently at 50)
+const number_of_recent_words = 10;
+const minimum_story_length = 39; // 49? -- firebase rule
+const max_title_length = 30; // firebase rule
+const tweet_vote_threshold = 25; // firebase and index
+const tweet_rating_threshold = 4; // firebase andindex -- not used rn
 
 // Checks if user meant to submmit non dictionary word
 let are_you_sure = last_entry = "";
@@ -188,13 +202,12 @@ let are_you_sure = last_entry = "";
 let stop_score = function() {};
 let stop_story = function() {};
 let stop_queue = function() {};
-let stop_announcements = function() {};
 let stop_messages = function() {};
 
-let stories_per_page = 25
-
 // I should add in user_loaded
-let global_user = user_stories = queue_loaded = top_stories_loaded = recent_stories_loaded = loading = load_when_finshed = on_dead_queue = warning_shown = flag_end_confirmation = user_has_messages = false;
+let global_user = user_stories = queue_loaded = top_stories_loaded = recent_stories_loaded = loading = load_when_finshed = on_dead_queue = warning_shown = flag_end_confirmation = user_has_messages = schema_generated = false;
+
+
 
 // Tracks queue - Tracks Which story in your personal queue you're on - Tracks when you get to start
 let counter = {
@@ -205,30 +218,18 @@ let counter = {
     title: 0 // how many titles youve done (gets x at a time)
 };
 
-const in_progress_string = '<span class="progress">in progress</span>';
+
+
 
 // For detecting errors with uploading new profile images.
 let new_profile_pic = new Image();
-
-// Default photo url - we will load user's image once only
-let my_photo_url = "https://basher.app/images/user.png";
-
-// For flag to apppear
-const minimum_story_length = 39; // 49?
-
-// Number of recent words
-const number_of_recent_words = 10;
-
-// number of stories to get at a time for tables, etc.
-const limit_count = 100;
-const recent_user_count = 24;
 
 // Queue
 const writes = 8; // 40 words 
 const rates = 1; // 5 ratings 
 const titles = 1; // 5 votes
 const starts = 1; // ? new stories. Only works when available. (score / created > 30 ) match on RULES
-const score_to_stories_ratio = 50;
+
 
 // Queue Order
 const queue_write = 0;
@@ -399,7 +400,6 @@ firebase.auth().onAuthStateChanged((user) => {
 
 
 
-
             if (global_user.photoURL.substring(0, 5) !== "https") {
 
                 let starsRef1 = storage.ref().child("Custom_Photos/" + global_user.photoURL);
@@ -423,6 +423,8 @@ firebase.auth().onAuthStateChanged((user) => {
 
             // Recent USers
 
+            $("#recent_users_div").html("");
+
             db.collection("Users").orderBy('last_login', 'desc').limit(recent_user_count).get().then((snapshot) => {
                 snapshot.forEach((doc) => {
                     if (doc.exists) {
@@ -434,11 +436,11 @@ firebase.auth().onAuthStateChanged((user) => {
                         let pun = doc.id;
 
                         if (purl.substring(0, 4).toLowerCase() === "http")
-                            $("#recent_users_div").append("<img title=\"" + pdn + "\" src=" + purl + " onclick=\"get_user('" + pun + "')\"/>");
+                            $("#recent_users_div").append("<img title=\"" + pdn + "\" src=\"" + purl + "\" onclick=\"get_user('" + pun + "')\"/>");
                         else {
                             storage.ref().child("Custom_Photos/" + purl).getDownloadURL().then((url) => {
 
-                                $("#recent_users_div").append("<img title=\"" + pdn + "\" src=" + url + " onclick=\"get_user('" + pun + "')\"/>");
+                                $("#recent_users_div").append("<img title=\"" + pdn + "\" src=\"" + url + "\" onclick=\"get_user('" + pun + "')\"/>");
 
                             });
                         }
@@ -446,8 +448,45 @@ firebase.auth().onAuthStateChanged((user) => {
                 });
             });
 
+            // FUn stats
+
+            $(".logged_in loader-icon").show();
+            $.get({
+                url: "//us-central1-milli0ns0fm0nkeys.cloudfunctions.net/stats_check",
+                type: 'GET',
+                dataType: 'json'
+            }).done((data) => {
+
+                $(".logged_in loader-icon").hide();
+                $("#cool_stats").append("<tr style=\"display: none\"><td></td></tr><tr><td><b>Number Of Bashers:</b> " + numberWithCommas(data.total_users) + "</td></tr>");
+                $("#cool_stats").append("<tr><td><b>Stories Completed:</b> " + numberWithCommas(data.completed_stories) + "</td></tr>");
+                $("#cool_stats").append("<tr><td><b>Stories In Progress:</b> " + numberWithCommas(data.total_stories - data.completed_stories) + "</td></tr>");
 
 
+                db.collection("Users").doc(data.most_points.user).get().then((un) => {
+
+                    if (un.exists) {
+
+                        let cont = un.data();
+                        let purl = cont.photoURL;
+
+                        if (cont.photoURL.substring(0, 4).toLowerCase() !== "http") {
+                            storage.ref().child("Custom_Photos/" + cont.photoURL).getDownloadURL().then((url) => {
+                                purl = url;
+                                $("#cool_stats").append("<tr><td id=\"highest\" onclick=\"get_user('" + data.most_points.user + "')\"><img title=\"" + cont.displayName + "\" src=\"" + purl + "\" /><b>Highest Ranked Basher:</b><br />" + cont.displayName + " (" + numberWithCommas(cont.score) + ")" + "</td></tr>");
+
+                            });
+                        } else
+                            $("#cool_stats").append("<tr><td id=\"highest\" onclick=\"get_user('" + data.most_points.user + "')\"><img title=\"" + cont.displayName + "\" src=\"" + purl + "\" /><b>Highest Ranked Basher:</b><br />" + cont.displayName + " (" + numberWithCommas(cont.score) + ")" + "</td></tr>");
+
+
+
+                    }
+
+
+                }).catch(log_error);
+
+            });
 
             // Listen For Server Updates, Spefically for Score and Write Queue
 
@@ -459,19 +498,26 @@ firebase.auth().onAuthStateChanged((user) => {
 
                 let message_data = doc.data().messages;
 
-                $("#messages_div").html('<p id="warning"><b>' + warning_message.title + '</b> ' + warning_message.message);
+                $("#messages_div").html('<tr id="warning"><td><b>' + warning_message.title + '</b> ' + warning_message.message + '</td></tr>');
 
-                for (i = 0; i < message_data.length; i++) {
 
-                    $("#messages_div").append('<p><b>' + (message_data[i].title || "") + '</b> ' + (message_data[i].message || ""));
+                for (let i = message_data.length - 1; i >= 0 && i >= (message_data.length - number_of_messages); i--) {
+
+                    $("#messages_div").append('<tr><td><b>' + (message_data[i].title || "") + '</b> ' + (message_data[i].message || "") + '</td></tr>');
                     user_has_messages = true;
+
+                    if (i >= (last_message_data_length || message_data.length))
+                        $.notify(message_data[i].title);
                 }
 
+
+                var last_message_data_length = message_data.length;
 
             });
 
 
-            stop_announcements = db.collection("Messages").doc("global").onSnapshot((doc) => {
+            $("#announcements_div").html("");
+            db.collection("Messages").doc("global").get().then((doc) => {
 
 
                 if (!doc.exists)
@@ -479,9 +525,7 @@ firebase.auth().onAuthStateChanged((user) => {
 
                 let announcement_data = doc.data().announcements;
 
-                $("#announcements_div").html('<p id="warning"><b>' + warning_message.title + '</b> ' + warning_message.message);
-
-                for (i = 0; i < announcement_data.length; i++) {
+                for (let i = announcement_data.length - 1; i >= 0; i--) {
 
                     $("#announcements_div").append('<p><b>' + announcement_data[i].title + '</b> ' + announcement_data[i].message);
                 }
@@ -757,7 +801,6 @@ function logout() {
     stop_queue();
     stop_score();
     stop_story();
-    stop_announcements();
     stop_messages();
     $("#register").show();
     firebase.auth().signOut();
@@ -794,13 +837,16 @@ function star(raw_number, user_score) {
 
 
     let return_string = '';
-    let half_star = (raw_number - stars >= .5) ? true : false;
+    let half_star = (raw_number - stars >= .25 && raw_number - stars < .75) ? 1 : 0;
+
+    if (raw_number - stars >= .75)
+        stars++;
 
     // Draw Black or Gold Stars 
 
 
 
-    for (i = 0; i < stars; i++) {
+    for (let i = 0; i < stars; i++) {
         return_string += '<svg class="star ' + ((user_score) ? "gold" : "") + ' star_' + (i + 1) + '" data-value="' + (i + 1) + '" width="260" height="245" viewBox="0 0 260 245" xmlns="http://www.w3.org/2000/svg"><path d="m55,237 74-228 74,228L9,96h240"/></svg>';
 
     }
@@ -808,12 +854,14 @@ function star(raw_number, user_score) {
     // Draw Half Star 
 
     if (half_star && !user_score) {
-        return_string += '<svg class="star star_' + (i + 1) + '" data-value="' + (i + 1) + '" width="260" height="245" viewBox="0 0 260 245" xmlns="http://www.w3.org/2000/svg"><path d="m55,237 74-228 74,228L9,96h240"/></svg>';
         stars++;
+        return_string += '<svg class="star half star_' + stars + '" data-value="' + stars + '" width="260" height="245" viewBox="0 0 260 245" xmlns="http://www.w3.org/2000/svg"><path d="m55,237 74-228 74,228L9,96h240"/></svg>';
+        return_string += '<svg class="star halfoff off star_' + stars + '" data-value="' + stars + '" width="260" height="245" viewBox="0 0 260 245" xmlns="http://www.w3.org/2000/svg"><path d="m55,237 74-228 74,228L9,96h240"/></svg>';
+
     }
 
     // Draw Empty Gray Stars
-    for (i = stars; i < 5; i++) {
+    for (let i = stars; i < 5; i++) {
         return_string += '<svg class="star star_' + (i + 1) + ' off" data-value="' + (i + 1) + '" width="260" height="245" viewBox="0 0 260 245" xmlns="http://www.w3.org/2000/svg"><path d="m55,237 74-228 74,228L9,96h240"/></svg>';
 
     }
@@ -838,12 +886,12 @@ function change_name() {
     let new_name = $("#new_name").val();
 
 
-    if (new_name.length > 15) {
-        $("change_name .error-code").show();
+    if (new_name.length > 15 || new_name.length <= 1) {
+        $.notify("There was an error. Please choose a different name.", "error");
         return;
     }
 
-    $("change_name .error-code").hide();
+
 
     return $.get({
         url: "//us-central1-milli0ns0fm0nkeys.cloudfunctions.net/addTitle",
@@ -864,11 +912,11 @@ function change_name() {
                 $(".user_id").html(new_name);
                 global_user.displayName = new_name;
                 $.notify("Display name updated.");
-                $("change_name").hide();
+                $("change-name").hide();
 
             })
             .catch((error) => {
-                $("change_name .error-code").show();
+                $.notify("There was an error. Please choose a different name.", "error");
                 console.error(error);
             });
 
@@ -876,7 +924,7 @@ function change_name() {
 
     }).fail(() => {
 
-        $("change_name .error-code").show();
+        $.notify("There was an error. Please choose a different name.", "error");
         return;
 
     });
@@ -890,11 +938,11 @@ function change_email() {
 
 
     if (!validateEmail(new_email) || their_password.length < 6) {
-        $("change_email .error-code").show();
+        $.notify("There was an error. Please check your email address.", "error");
         return;
     }
 
-    $("change_email .error-code").hide();
+
     document.getElementById("reset_me_email").reset();
 
 
@@ -911,7 +959,7 @@ function change_email() {
                 // $(".email").html(new_email);
                 //  global_user.email = new_email;
                 $.notify("Email address updated.");
-                $("change_email").hide();
+                $("change-email").hide();
                 $(".email").html(new_email);
                 firebase.auth().currentUser.sendEmailVerification(email_config);
 
@@ -920,7 +968,7 @@ function change_email() {
 
             })
             .catch((error) => {
-                $("change_email .error-code").show();
+                $.notify("There was an error. Please check your email address.", "error");
                 console.error(error);
             });
 
@@ -936,28 +984,28 @@ function change_password() {
     let confirm_password = $("#confirm_password").val();
 
     if (new_password !== confirm_password || new_password.length < 6 || new_password == old_password) {
-        $("change_password .error-code").show();
+        $.notify("There was an error. Please choose a different password.", "error");
         return;
     }
 
     document.getElementById("reset_me_password").reset();
-    $("change_password .error-code").hide();
+
 
     let credential = firebase.auth.EmailAuthProvider.credential(global_user.email, old_password);
 
-    global_user.reauthenticateAndRetrieveDataWithCredential(credential).then(() => {
+    global_user.reauthenticateWithCredential(credential).then(() => {
         // User re-authenticated.
 
         global_user.updatePassword(new_password).then(() => {
 
-            $("change_password .error-code").hide();
+
             $.notify("Password changed.");
-            $("change_password").hide();
+            $("change-password").hide();
 
         }).catch((error) => {
 
             console.log(error)
-            $("change_password .error-code").show();
+            $.notify("There was an error. Please choose a different password.", "error");
         });
 
     }).catch(log_error);
@@ -1003,11 +1051,11 @@ function upload_new_image(the_file) {
         return;
 
     if (the_file.size > 1024 * 1024 * 1.2) {
-        $("upload-image .error-code").css("display", "inline");
+        $.notify("There was an error. Please try a different image.", "error");
         return;
     }
 
-    $("upload-image .error-code").hide();
+
     //      document.getElementById("reset_me_upload").reset();
     $("loader-icon").css("display", "inline");
 
@@ -1025,7 +1073,7 @@ function upload_new_image(the_file) {
         console.log(error);
 
         $("loader-icon").hide();
-        $("upload-image .error-code").css("display", "inline");
+        $.notify("There was an error. Please choose a different image.", "error");
 
 
     }, () => {
@@ -1108,24 +1156,117 @@ function div_loading(finished, load_this, instant) {
 
 function get_start() {
 
+    update_history();
     div_loading(false, "start", true);
 
 
 }
 
-function update_history(url, title) {
 
-    title = (title ? title : "Write One Word Of The Next Great Story!");
+function update_history(url, title, update) {
+
+    let little_hash = url;
+
+    full_title = (title ? "Basher! " + title : default_title);
 
     if (location.hostname !== "localhost") {
 
-        if (gtag || false)
-            gtag('config', 'UA-XXXXXXXXX-1', { 'page_path': '/' + url });
+        url = (url ? "?show=" + url : "");
 
-        history.pushState(null, "Basher! " + title, "https://basher.app/" + (url ? "?show=" + url : ""));
+        if (gtag || false)
+            gtag('config', 'UA-139149604-1', {
+                'page_title': title,
+                'page_location': "https://basher.app/" + url,
+                'page_path': '/' + url
+            });
+
+        history.pushState(null, full_title, "https://basher.app/" + url);
     }
 
-    document.title = "Basher! " + title;
+    document.title = full_title;
+
+    if (!schema_generated) {
+
+        schema_generated = true;
+
+        var schema_data = {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "Basher! Write One Word Of The Next Great Story!",
+            "url": "https://basher.app/" + url
+
+        };
+
+        if (update) {
+            // A Story we're reading
+
+            if (typeof addthis !== undefined) {
+
+                //+ "&title=" + uri
+                addthis.update('share', 'url', "https://basher.app/" + url);
+                addthis.update('share', 'title', 'Basher! Story: "' + full_title + '"');
+                addthis.update('share', 'description', "Read this story written one word at a time by people of the Internet.");
+                addthis.update('share', 'media', "https://basher.app/images/logo.png");
+            }
+
+
+            schema_data["@type"] = "Article";
+            schema_data.headline = title;
+            schema_data.datePublished = new Date(update).toISOString();
+            schema_data.dateModified = new Date(update).toISOString();
+            schema_data.author = {
+                "@type": "Organization",
+                "name": "Basher"
+            };
+            schema_data.publisher = {
+                "@type": "Organization",
+                "name": "Basher",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://basher.app/images/logo.png",
+                    "width": 750,
+                    "height": 500
+                }
+            };
+            schema_data.mainEntityOfPage = {
+                "@type": "WebPage",
+                "@id": "https://basher.app/?show=top"
+            };
+
+            schema_data.image = {
+                "@type": "ImageObject",
+                "url": "https://basher.app/images/logo.png",
+                "width": 750,
+                "height": 500
+            };
+
+
+
+        } else if (little_hash == "top" || little_hash == "recent" || little_hash == "about") {
+
+            schema_data["@type"] = "BreadcrumbList";
+            schema_data.itemListElement = [{
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://basher.app"
+            }, {
+                "@type": "ListItem",
+                "position": 2,
+                "name": title,
+                "item": "https://basher.app/" + url
+            }];
+        } else {
+            schema_data["@type"] = "WebSite";
+            schema_data.datePublished = new Date().toISOString();
+        }
+
+        var script = document.createElement('script');
+        script.type = "application/ld+json";
+        script.innerHTML = JSON.stringify(schema_data);
+        console.log(JSON.stringify(schema_data));
+        document.getElementsByTagName('body')[0].appendChild(script);
+    }
 }
 
 function get_about() {
@@ -1365,7 +1506,7 @@ function load_queue(story_id, lets_do_this) {
         document.getElementById("f1").focus();
         $('new-word').css("display", "inline");
 
-        $(".queue h2").html("Write The First Word Of The Next Great Story");
+        $(".queue h2").html("Write The First Word Of The Next&nbsp;Great&nbsp;Story");
         $(".queue contributors-wrapper ul").html('<li onclick="get_user(\'' + global_user.uid + '\')">' + global_user.displayName + '</li>');
 
         story_db = {};
@@ -1709,7 +1850,10 @@ function deny() {
 }
 
 $(document).on('keypress', function(e) {
+
+
     if (e.which == 13) {
+        e.preventDefault();
 
         if ($("change-email:visible").length === 1)
             change_email();
@@ -1728,6 +1872,7 @@ function dictionary_check(passed, sanitized) {
         if (global_user.score > 1000) {
             $(".queue .error-code").html("That word wasn't found in our dictionary. Are you sure you want to submit it?");
             are_you_sure = sanitized;
+            last_entry = "";
         } else
             $(".queue .error-code").html("Sorry, that word wasn't found in our dictionary. You need a score of 1,000 to submit non-dictionary words.");
         $(".queue loader-icon").hide();
@@ -1840,6 +1985,8 @@ function submit(flag_end) {
             return;
         });
 
+    } else {
+        dictionary_check(true, sanitized);
     }
 
 
@@ -1916,10 +2063,11 @@ function vote(num_stars, which_db) {
     $(".votes_cast").html("(" + new_score.toFixed(2) + " rating - " + new_votes + ((new_votes !== 1) ? " votes)" : " vote)"));
 
     if (gtag || false) {
-        gtag('event', num_stars, {
+        gtag('event', JSON.stringify(num_stars), {
             'event_category': 'Rating Submit'
         });
     }
+
     db.collection("Users").doc(global_user.uid).collection("Stories").doc(which_db.id).set({
 
             "rating": num_stars
@@ -2011,11 +2159,32 @@ function vote_on_title() {
 }
 
 
+function short_title(story_string, page_title) {
+
+    if (page_title)
+        return page_title;
+
+    story_string = story_string.trim();
+
+    if (story_string.length > max_title_length)
+        story_string = story_string.substring(0, story_string.lastIndexOf(" ", max_title_length - 3));
+
+    if (punc.indexOf(story_string.substring(story_string.length - 1)) > -1)
+        story_string = story_string.substring(0, story_string.length - 1);
+
+    story_string += "...";
+
+    return story_string;
+
+}
+
 // PAGE LOADING FUNCTIONS
 
 function get_story(story_id) {
 
     div_loading(false, "story");
+
+    $(".story the-title").hide();
 
     db.collection("Stories").doc(story_id).get().then((doc) => {
 
@@ -2035,26 +2204,15 @@ function get_story(story_id) {
 
             // Load Title
 
-            let page_title = "";
             if (read_db.title) {
-                $(".story the-title").show();
+
                 $(".story the-title").html(read_db.title);
-                page_title = '"' + read_db.title + '"';
-            } else
-                $(".story the-title").hide();
-
-            var uri = encodeURIComponent(read_db.title);
-
-            update_history("story&id=" + read_db.id + "&title=" + uri, "Story: " + page_title);
-
-            if (typeof addthis !== "undefined") {
-
-                addthis.update('share', 'url', "https://basher.app/?show=story&id=" + read_db.id + "&title=" + uri);
-                addthis.update('share', 'title', "Basher! Story: " + page_title);
-                addthis.update('share', 'description', "Read this story written one word at a time by people of the Internet.");
-                addthis.update('share', 'media', "https://basher.app/images/logo.png");
+                $(".story the-title").show();
             }
 
+
+            // + "&title=" + uri
+            update_history("story&id=" + read_db.id, 'Story: "' + short_title(story_string, read_db.title) + '"', read_db.last_update);
 
 
             // Load Rating
@@ -2105,13 +2263,6 @@ function get_story(story_id) {
     });
 }
 
-function get_signin() {
-
-    update_history();
-
-    div_loading(true, 'start', true);
-}
-
 
 function get_user(diff_user) {
 
@@ -2130,7 +2281,7 @@ function get_user(diff_user) {
                 let local_user = doc.data();
                 local_user.uid = doc.id;
 
-                update_history("profile&id=" + local_user.uid, "Profile: " + local_user.displayName);
+                update_history("profile&id=" + local_user.uid, "Profile: " + local_user.displayName, local_user.last_login);
 
                 process_user(local_user);
 
@@ -2145,6 +2296,8 @@ function get_user(diff_user) {
 
         if (user_has_messages)
             $(".messages").show();
+        else
+            $(".messages").hide();
 
         $("user-settings").show();
         $(".email").html(global_user.email);
@@ -2168,15 +2321,17 @@ function process_user(local_user) {
 
     if (local_user.recent_words.length > 0) {
 
-        $(".user .recent_words").show();
+        $("recent-words").html('<table><tr style="display:none"><td></td></tr></table>');
 
-        for (i = 0; i < local_user.recent_words.length && i < number_of_recent_words; i++) {
+        for (let i = 0; i < local_user.recent_words.length && i < number_of_recent_words; i++) {
 
-            if (i > 0)
-                $("recent-words").append(", ");
+            $("recent-words table").append("<tr><td>" + local_user.recent_words[local_user.recent_words.length - 1 - i] + "</td></tr>");
 
-            $("recent-words").append(local_user.recent_words[local_user.recent_words.length - 1 - i]);
+
         }
+
+
+        $(".user .recent_words").show();
 
     }
 
@@ -2199,8 +2354,6 @@ function process_user(local_user) {
         }).catch(log_error);
 
     }
-
-    get_stories("started", local_user);
 
     get_stories("your", local_user);
 
@@ -2233,6 +2386,7 @@ function get_stories(which_type, local_user) {
         db.collection("Stories").where("contributors", "array-contains", local_user.uid).orderBy('rating', 'desc').limit(limit_count).get().then((snapshot) => {
 
             process_snapshot(snapshot, which_type);
+            process_snapshot(snapshot, "started", local_user.uid);
 
             div_loading(true, "user");
 
@@ -2265,7 +2419,7 @@ function get_stories(which_type, local_user) {
 
     } else if (which_type == "top") {
 
-        db.collection("Stories").orderBy('rating', 'desc').limit(limit_count).get().then((snapshot) => {
+        db.collection("Stories").orderBy('rating.score', 'desc').limit(limit_count).get().then((snapshot) => {
 
             //   console.log("loading highest rated stories");
 
@@ -2282,7 +2436,7 @@ function get_stories(which_type, local_user) {
 
 
 
-function process_snapshot(snapshot, which_type) {
+function process_snapshot(snapshot, which_type, local_uid) {
 
     let stories = [];
 
@@ -2301,21 +2455,29 @@ function process_snapshot(snapshot, which_type) {
 
     // Your stories also includes a "started" stories table, which is your stories but where your word is first
 
-    let story_started = false;
     let which_page = "";
     let page_counter = 0;
-    let at_least_one = false;
+    let at_least_one = 0;
     global_tables[which_type] = {};
     global_tables[which_type]["page1"] = "<tr><th>Story</th><th>Rating</th><th class=\"date\">Completed</th></tr>";
 
+    if (which_type == "started" || which_type == "top") {
+        at_least_one = 1;
+        which_page = "page1";
+    }
+
     stories.forEach((the_story, index) => {
 
-        if (index % stories_per_page === 0) {
+        if (index % stories_per_page === 0 && (which_type !== "started" && which_type !== "top")) {
             page_counter++;
             which_page = "page" + page_counter;
 
-        } else
-            at_least_one = true;
+        } else if ((which_type == "started" || which_type == "top") && at_least_one % stories_per_page === 0) {
+            page_counter++;
+            which_page = "page" + page_counter;
+
+        }
+
 
         let story_string = "";
 
@@ -2330,22 +2492,7 @@ function process_snapshot(snapshot, which_type) {
             the_date = (new_date.getMonth() + 1) + '/' + new_date.getDate() + '/' + new_date.getFullYear();
         }
 
-        let title = story_string;
-        let is_long = false;
-
-        if (the_story.title)
-            title = the_story.title;
-        else
-            is_long = true; // elipses after non titles?
-
-        if (title.length > 33)
-            title = title.substring(0, title.lastIndexOf(" ", 30));
-
-        if (punc.indexOf(title.substring(title.length - 1)) > -1)
-            title = title.substring(0, title.length - 1);
-
-        if (is_long)
-            title = title + "...";
+        let title = short_title(story_string, the_story.title);
 
         let user_rating = null;
 
@@ -2358,7 +2505,8 @@ function process_snapshot(snapshot, which_type) {
 
         // if the first word was written by this user, flip it to started stories (not in both)
 
-        if (which_type !== "started" || (the_story.contributors[0] == global_user.uid)) {
+        if ((which_type !== "started" && which_type !== "top") || (which_type == "top" && the_story.rating.votes > tweet_vote_threshold) || (which_type == "started" && the_story.contributors[0] == local_uid)) {
+            at_least_one++;
 
             // $("." + which_type + "_stories table").append("<tr class=\"" + the_story.id + "\"><td class=\"title\" onclick=\"get_story('" + the_story.id + "')\">" + title + "</td><td class=\"rating\">" + star(the_story.rating.score, user_rating) + "</td><td class=\"date\">" + the_date + "</td></tr>");
             global_tables[which_type][which_page] += "<tr class=\"" + the_story.id + "\"><td class=\"title\" onclick=\"get_story('" + the_story.id + "')\">" + title + "</td><td class=\"rating\">" + star(the_story.rating.score, user_rating) + "</td><td class=\"date\">" + the_date + "</td></tr>";
@@ -2368,7 +2516,7 @@ function process_snapshot(snapshot, which_type) {
 
     });
 
-    if (at_least_one) {
+    if ((which_type !== "started" && which_type !== "top" && at_least_one) || ((which_type == "top" || which_type == "started") && at_least_one > 1)) {
 
         $('.' + which_type + '_stories table').html(global_tables[which_type]["page1"]);
 

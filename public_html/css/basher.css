@@ -2,11 +2,12 @@
     --approve: #6AC259;
     --black: #121420;
     --deny: #F05228;
-    --empty-star: var(--shadow);
+    --empty-star: #BBBBBB;
     --gold: #FFD700;
-    --main_accent: #a1a6b4;
-    /*launch silver: b3b1bb  green b6d7b9  grey bdb4bf / blue A5A4AE */
+    --main_accent: #7f95d1;
+    /*v1.1 gray  #a1a6b4 launch silver: b3b1bb  green b6d7b9  grey bdb4bf / blue A5A4AE */
     --main_background: #d6dff0;
+    /* alt blue rya #c6d8ff v1.1  */
     /* darkish blue b4c5e4 */
     /* dark gray aaabbc */
     /* launch gray: eff2ef */
@@ -59,10 +60,6 @@ select {
     -webkit-appearance: none;
     appearance: none;
     background-color: var(--white);
-    /* note: bg image below uses 2 urls. The first is an svg data uri for the arrow icon, and the second is the gradient. 
-		for the icon, if you want to change the color, be sure to use `%23` instead of `#`, since it's a url. You can also swap in a different svg icon or an external image reference
-		
-	*/
     background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23b3b1bb%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
     background-repeat: no-repeat, repeat;
     /* arrow icon position (1em from the right, 50% vertical) , then gradient position*/
@@ -95,6 +92,10 @@ select option {
 
 
 /* End Select */
+
+.halfoff {
+    margin-left: -2rem;
+}
 
 #f1 {
     font-weight: 300;
@@ -200,8 +201,8 @@ loader-icon svg {
 
 .queue loader-icon svg {
     position: absolute;
-    bottom: -4.5rem;
-    left: 8.5rem
+    bottom: -3.25rem;
+    left: 9.5rem;
 }
 
 .flag {
@@ -214,8 +215,8 @@ loader-icon svg {
 }
 
 .half {
-    -webkit-clip-path: inset(050%00);
-    clip-path: inset(050%00)
+    -webkit-clip-path: inset(0 45% 0 0);
+    clip-path: inset(0 45% 0 0);
 }
 
 .other_score:after,
@@ -264,6 +265,11 @@ contributors-wrapper li,
     margin: -2rem 0 4rem
 }
 
+.messages table div {
+    display: inline-block;
+    cursor: pointer;
+}
+
 .rankings span {
     display: none;
     font-weight: 300
@@ -302,7 +308,8 @@ tr {
     height: 2rem;
     position: relative;
     top: .1rem;
-    width: 2rem
+    width: 2rem;
+    z-index: 5;
 }
 
 .star_wrap {
@@ -317,6 +324,7 @@ tr {
 
 .star_wrap .star:hover~.star,
 .off {
+    z-index: 4;
     fill: var(--empty-star)
 }
 
@@ -327,13 +335,13 @@ tr {
 }
 
 .user button {
-    background-color: var(--nav_accent);
+    background-color: var(--main_accent);
     border: none;
     color: var(--black)
 }
 
 button.submit_change {
-    background-color: var(--main_accent);
+    background-color: var(--nav_accent);
     text-indent: 0 !important;
     text-align: center
 }
@@ -362,6 +370,7 @@ loader-icon,
 .started_stories,
 .your_stories,
 .favorite_stories,
+.messages,
 change-password,
 change-name,
 change-email,
@@ -371,6 +380,10 @@ change-email,
 suggest-title,
 mobile-footer {
     display: none
+}
+
+#warning {
+    background-color: var(--deny);
 }
 
 [type="checkbox"],
@@ -839,10 +852,25 @@ ul {
     /* max-width: 58rem */
 }
 
+#stats,
 #recent_users,
 #announcements,
 #rules {
     margin-top: 4rem
+}
+
+#recent_users {
+    margin-bottom: 3rem;
+}
+
+#highest img {
+    width: 5rem;
+    margin: 0 1rem 0 0;
+    float: left;
+}
+
+#highest {
+    cursor: pointer;
 }
 
 #recent_users_div img {
@@ -879,7 +907,6 @@ tr.more {
 }
 
 #kurt {
-    border: 4px solid var(--nav_accent);
     width: 100%;
     object-fit: cover;
     max-height: 20rem;

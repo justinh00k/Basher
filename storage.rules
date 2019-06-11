@@ -3,8 +3,9 @@ service firebase.storage {
     match /Custom_Photos/{userID} {
       
       allow read: if true;  
-      allow write: if request.auth.uid == userID;
-
+      allow write: if request.auth.uid == userID &&
+                      request.resource.size < 1.2 * 1024 * 1024 &&
+                      request.resource.contentType.matches('image/.*');
     }
   }
 }
