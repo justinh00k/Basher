@@ -57,7 +57,7 @@ service cloud.firestore {
 
         function canStart(diff_data){
 
-        return (diff_data.stories_created == 0 || diff_data.score / diff_data.stories_created > 50 )
+        return (diff_data.stories_created == 0 || diff_data.score / diff_data.stories_created > 100 )
 
      }
 
@@ -72,7 +72,7 @@ service cloud.firestore {
                     ( 
                     (get(/databases/$(database)/documents/Stories/$(storyId)).data.date_finished == 0 && 
                     (the_data.new_word.matches('^([-\'0-9a-zÀ-ÿ]|[Þß÷þø])+$') ||
-                    (the_data.new_word == "[END]" && get(/databases/$(database)/documents/Stories/$(storyId)).data.story.size() >= 39)))
+                    (the_data.new_word == "[END]" && get(/databases/$(database)/documents/Stories/$(storyId)).data.story.size() >= 29)))
 										||
                     (get(/databases/$(database)/documents/Private/$(userId)).data.queued_stories.hasAll([storyId]) || 
                     (!(exists(/databases/$(database)/documents/Stories/$(storyId))) && canStart(get(/databases/$(database)/documents/Users/$(userId)).data)))

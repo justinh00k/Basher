@@ -4,9 +4,9 @@
     --deny: #F05228;
     --empty-star: #BBBBBB;
     --gold: #FFD700;
-    --main_accent: #7f95d1;
-    /*v1.1 gray  #a1a6b4 launch silver: b3b1bb  green b6d7b9  grey bdb4bf / blue A5A4AE */
-    --main_background: #d6dff0;
+    --main_accent: #4392f1;
+    /*7f95d1 v1.2 green #23ce6b #9bc995 new purple: #6d72c3  v1.1 gray  #a1a6b4 launch silver: b3b1bb  green b6d7b9  grey bdb4bf / blue A5A4AE */
+    --main_background: #dde4f2;
     /* alt blue rya #c6d8ff v1.1  */
     /* darkish blue b4c5e4 */
     /* dark gray aaabbc */
@@ -14,8 +14,8 @@
     /* pinkish ffeddf */
     /* blue #D0D8FA */
     /* #e9eefc E6E6FA */
-    --nav_accent: #4392f1;
-    /* alt blue: #3d52d5 */
+    --nav_accent: #E1518F;
+    /* 4392f1 alt blue: #3d52d5 */
     /* hipster pinl: E1518F */
     /* rose  BB3A69   */
     /* blue: #4169E1 */
@@ -23,12 +23,12 @@
     --shadow: rgba(0, 0, 0, .15);
     --star: var(--black);
     --white: #FFF;
-    --nav_h2: var(--nav_accent)
+    --nav_h2: var(--main_accent)
 }
 
 html {
     -webkit-text-size-adjust: 100%;
-    font-size: 10px;
+    font-size: 9px;
     line-height: 1.15
 }
 
@@ -41,6 +41,25 @@ body {
     margin: 0;
     overflow-x: hidden
 }
+
+.list_ad {
+    height: 2rem;
+}
+
+.adsbygoogle {
+    display: block;
+    min-height: 50px;
+    min-width: 250px;
+}
+
+
+/*
+.adslot_1 {
+    min-height: 50px;
+    min-width: 250px;
+    display: none;
+}
+*/
 
 
 /* Select CSS * /
@@ -370,6 +389,8 @@ loader-icon,
 .started_stories,
 .your_stories,
 .favorite_stories,
+.top_stories_page,
+.recent_stories_page,
 .messages,
 change-password,
 change-name,
@@ -590,7 +611,7 @@ main h2 {
     font-size: 4.5rem;
     font-weight: 700;
     letter-spacing: 0;
-    text-shadow: 3px 3px 0 var(--shadow);
+    text-shadow: 2px 2px 0 var(--white);
     padding-top: 2rem
     /*
     text-shadow: 2px 2px 0 var(--black), -1px -1px 0 var(--black), 1px -1px 0 var(--black), -1px 1px 0 var(--black), 1px 1px 0 var(--black)
@@ -631,6 +652,7 @@ main,
 nav,
 the-title,
 contributors-wrapper,
+ad-wrapper,
 rating-wrapper {
     display: block
 }
@@ -721,6 +743,7 @@ user-photo img {
     width: 10rem
 }
 
+ad-wrapper,
 rating-wrapper {
     margin: 2rem 0 4rem
 }

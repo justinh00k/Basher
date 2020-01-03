@@ -1,0 +1,3 @@
+Sitemap: https://basher.app/sitemap.xml
+User-agent: *
+Disallow: 
